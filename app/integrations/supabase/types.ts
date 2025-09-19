@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -12,36 +13,39 @@ export type Database = {
       profiles: {
         Row: {
           id: string
-          user_id: string
+          user_id: string | null
           username: string | null
           display_name: string | null
           avatar_url: string | null
           created_at: string
           updated_at: string
+          device_id: string | null
         }
         Insert: {
           id?: string
-          user_id: string
+          user_id?: string | null
           username?: string | null
           display_name?: string | null
           avatar_url?: string | null
           created_at?: string
           updated_at?: string
+          device_id?: string | null
         }
         Update: {
           id?: string
-          user_id?: string
+          user_id?: string | null
           username?: string | null
           display_name?: string | null
           avatar_url?: string | null
           created_at?: string
           updated_at?: string
+          device_id?: string | null
         }
       }
       transfers: {
         Row: {
           id: string
-          sender_id: string
+          sender_id: string | null
           receiver_id: string | null
           file_name: string
           file_size: number
@@ -54,10 +58,13 @@ export type Database = {
           qr_code_data: string | null
           created_at: string
           updated_at: string
+          sender_device_id: string | null
+          receiver_device_id: string | null
+          application_id: string | null
         }
         Insert: {
           id?: string
-          sender_id: string
+          sender_id?: string | null
           receiver_id?: string | null
           file_name: string
           file_size: number
@@ -70,10 +77,13 @@ export type Database = {
           qr_code_data?: string | null
           created_at?: string
           updated_at?: string
+          sender_device_id?: string | null
+          receiver_device_id?: string | null
+          application_id?: string | null
         }
         Update: {
           id?: string
-          sender_id?: string
+          sender_id?: string | null
           receiver_id?: string | null
           file_name?: string
           file_size?: number
@@ -86,60 +96,177 @@ export type Database = {
           qr_code_data?: string | null
           created_at?: string
           updated_at?: string
+          sender_device_id?: string | null
+          receiver_device_id?: string | null
+          application_id?: string | null
         }
       }
       transfer_sessions: {
         Row: {
           id: string
           session_code: string
-          creator_id: string
+          creator_id: string | null
           is_active: boolean
           expires_at: string
           created_at: string
+          creator_device_id: string | null
         }
         Insert: {
           id?: string
           session_code: string
-          creator_id: string
+          creator_id?: string | null
           is_active?: boolean
           expires_at?: string
           created_at?: string
+          creator_device_id?: string | null
         }
         Update: {
           id?: string
           session_code?: string
-          creator_id?: string
+          creator_id?: string | null
           is_active?: boolean
           expires_at?: string
           created_at?: string
+          creator_device_id?: string | null
         }
       }
       notifications: {
         Row: {
           id: string
-          user_id: string
-          transfer_id: string
+          user_id: string | null
+          transfer_id: string | null
           title: string
           message: string
           is_read: boolean
           created_at: string
+          device_id: string | null
         }
         Insert: {
           id?: string
-          user_id: string
-          transfer_id: string
+          user_id?: string | null
+          transfer_id?: string | null
           title: string
           message: string
           is_read?: boolean
           created_at?: string
+          device_id?: string | null
         }
         Update: {
           id?: string
-          user_id?: string
-          transfer_id?: string
+          user_id?: string | null
+          transfer_id?: string | null
           title?: string
           message?: string
           is_read?: boolean
+          created_at?: string
+          device_id?: string | null
+        }
+      }
+      applications: {
+        Row: {
+          id: string
+          package_name: string
+          app_name: string
+          version_name: string | null
+          version_code: number | null
+          icon_url: string | null
+          apk_size: number | null
+          apk_url: string | null
+          device_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          package_name: string
+          app_name: string
+          version_name?: string | null
+          version_code?: number | null
+          icon_url?: string | null
+          apk_size?: number | null
+          apk_url?: string | null
+          device_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          package_name?: string
+          app_name?: string
+          version_name?: string | null
+          version_code?: number | null
+          icon_url?: string | null
+          apk_size?: number | null
+          apk_url?: string | null
+          device_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      file_transfers: {
+        Row: {
+          id: string
+          transfer_id: string | null
+          file_data: number[] | null
+          file_path: string | null
+          chunk_size: number
+          total_chunks: number | null
+          uploaded_chunks: number
+          download_url: string | null
+          expires_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          transfer_id?: string | null
+          file_data?: number[] | null
+          file_path?: string | null
+          chunk_size?: number
+          total_chunks?: number | null
+          uploaded_chunks?: number
+          download_url?: string | null
+          expires_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          transfer_id?: string | null
+          file_data?: number[] | null
+          file_path?: string | null
+          chunk_size?: number
+          total_chunks?: number | null
+          uploaded_chunks?: number
+          download_url?: string | null
+          expires_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      transfer_chunks: {
+        Row: {
+          id: string
+          file_transfer_id: string | null
+          chunk_number: number
+          chunk_data: number[]
+          checksum: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          file_transfer_id?: string | null
+          chunk_number: number
+          chunk_data: number[]
+          checksum?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          file_transfer_id?: string | null
+          chunk_number?: number
+          chunk_data?: number[]
+          checksum?: string | null
           created_at?: string
         }
       }

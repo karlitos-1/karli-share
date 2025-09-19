@@ -25,11 +25,12 @@ const { width } = Dimensions.get('window');
 
 export default function TransferScreen() {
   const params = useLocalSearchParams();
-  const { createTransfer } = useTransfers();
+  const { createTransfer, uploadFile, transferProgress } = useTransfers();
   const { deviceId } = useAuth();
   const [transferMethod, setTransferMethod] = useState<'qr_code' | 'wifi_direct' | 'internet'>('qr_code');
   const [qrCodeData, setQrCodeData] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [currentTransfer, setCurrentTransfer] = useState<any>(null);
 
   const file = params.fileName ? {
     name: params.fileName as string,
@@ -116,12 +117,36 @@ export default function TransferScreen() {
         qr_code_data: qrCodeData,
       };
 
-      await createTransfer(transferData);
-      Alert.alert(
-        'Transfert créé',
-        'Le transfert a été créé avec succès. Partagez le code QR avec le destinataire.',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      const transfer = await createTransfer(transferData);
+      if (!transfer) {
+        Alert.alert('Erreur', 'Impossible de créer le transfert');
+        return;
+      }
+
+      setCurrentTransfer(transfer);
+
+      // If it's a file (not application), start uploading immediately
+      if (file && file.uri) {
+        console.log('Starting file upload for transfer:', transfer.id);
+        const success = await uploadFile(transfer.id, file.uri);
+        
+        if (success) {
+          Alert.alert(
+            'Transfert créé',
+            'Le fichier a été préparé avec succès. Partagez le code QR avec le destinataire.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert('Erreur', 'Échec de l\'envoi du fichier');
+        }
+      } else {
+        // For applications, just create the transfer record
+        Alert.alert(
+          'Transfert créé',
+          'Le transfert a été créé avec succès. Partagez le code QR avec le destinataire.',
+          [{ text: 'OK' }]
+        );
+      }
     } catch (error) {
       console.error('Error creating transfer:', error);
       Alert.alert('Erreur', 'Impossible de créer le transfert');
@@ -170,6 +195,9 @@ export default function TransferScreen() {
       </SafeAreaView>
     );
   }
+
+  // Get current transfer progress
+  const progress = currentTransfer ? transferProgress.get(currentTransfer.id) : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -229,6 +257,27 @@ export default function TransferScreen() {
             </View>
           </LinearGradient>
         </View>
+
+        {/* Progress Indicator */}
+        {progress && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressTitle}>{progress.message}</Text>
+              <Text style={styles.progressPercent}>{progress.progress}%</Text>
+            </View>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { 
+                    width: `${progress.progress}%`,
+                    backgroundColor: progress.status === 'failed' ? colors.error : colors.success
+                  }
+                ]} 
+              />
+            </View>
+          </View>
+        )}
 
         {/* Transfer Methods */}
         <View style={styles.section}>
@@ -293,16 +342,18 @@ export default function TransferScreen() {
         {/* Start Transfer Button */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.startButton}
+            style={[styles.startButton, (isGenerating || progress) && styles.startButtonDisabled]}
             onPress={handleStartTransfer}
-            disabled={isGenerating}
+            disabled={isGenerating || !!progress}
           >
             <LinearGradient
               colors={[colors.success, '#059669']}
               style={styles.startButtonGradient}
             >
               <Icon name="send-outline" size={24} color={colors.background} />
-              <Text style={styles.startButtonText}>Démarrer le transfert</Text>
+              <Text style={styles.startButtonText}>
+                {progress ? 'Transfert en cours...' : 'Démarrer le transfert'}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -392,6 +443,41 @@ const styles = StyleSheet.create({
   fileTypeIcon: {
     marginLeft: 16,
   },
+  progressContainer: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  progressTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  progressPercent: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: colors.border,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
   section: {
     paddingHorizontal: 20,
     marginBottom: 24,
@@ -476,6 +562,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     boxShadow: '0px 4px 12px rgba(16, 185, 129, 0.3)',
     elevation: 4,
+  },
+  startButtonDisabled: {
+    opacity: 0.6,
   },
   startButtonGradient: {
     flexDirection: 'row',

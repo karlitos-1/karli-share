@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, commonStyles } from '../../styles/commonStyles';
 import { useAuth } from '../../hooks/useAuth';
+import { useTransfers } from '../../hooks/useTransfers';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import { generateSessionCode } from '../../utils/fileUtils';
 import QRCode from 'react-native-qrcode-svg';
@@ -21,6 +22,7 @@ const { width } = Dimensions.get('window');
 
 export default function ReceiveScreen() {
   const { deviceId } = useAuth();
+  const { processQRCode } = useTransfers();
   const [mode, setMode] = useState<'generate' | 'scan'>('generate');
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [sessionCode, setSessionCode] = useState<string>('');
@@ -49,65 +51,30 @@ export default function ReceiveScreen() {
     setHasPermission(status === 'granted');
   };
 
-  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+  const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
     if (scanned) return;
     
     setScanned(true);
     console.log('QR Code scanned:', data);
 
     try {
-      const transferData = JSON.parse(data);
+      const success = await processQRCode(data);
       
-      if (transferData.type === 'application') {
-        Alert.alert(
-          'Application reçue',
-          `Voulez-vous recevoir l'application "${transferData.app.name}" (${transferData.app.version}) ?`,
-          [
-            { text: 'Annuler', style: 'cancel', onPress: () => setScanned(false) },
-            { 
-              text: 'Recevoir', 
-              onPress: () => {
-                console.log('Receiving application:', transferData.app);
-                Alert.alert(
-                  'Réception en cours',
-                  'L\'application est en cours de réception. Vous recevrez une notification une fois terminé.',
-                  [{ text: 'OK', onPress: () => setScanned(false) }]
-                );
-              }
-            }
-          ]
-        );
-      } else if (transferData.type === 'file') {
-        Alert.alert(
-          'Fichier reçu',
-          `Voulez-vous recevoir le fichier "${transferData.file.name}" ?`,
-          [
-            { text: 'Annuler', style: 'cancel', onPress: () => setScanned(false) },
-            { 
-              text: 'Recevoir', 
-              onPress: () => {
-                console.log('Receiving file:', transferData.file);
-                Alert.alert(
-                  'Réception en cours',
-                  'Le fichier est en cours de réception. Vous recevrez une notification une fois terminé.',
-                  [{ text: 'OK', onPress: () => setScanned(false) }]
-                );
-              }
-            }
-          ]
-        );
-      } else {
+      if (!success) {
         Alert.alert(
           'Code QR invalide',
           'Ce code QR ne contient pas de données de transfert valides.',
           [{ text: 'OK', onPress: () => setScanned(false) }]
         );
+      } else {
+        // Success is handled in the processQRCode function
+        setScanned(false);
       }
     } catch (error) {
-      console.error('Error parsing QR code data:', error);
+      console.error('Error processing QR code:', error);
       Alert.alert(
         'Erreur',
-        'Impossible de lire les données du code QR.',
+        'Impossible de traiter le code QR.',
         [{ text: 'OK', onPress: () => setScanned(false) }]
       );
     }
