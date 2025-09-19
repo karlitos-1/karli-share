@@ -53,7 +53,7 @@ export class FileTransferService {
 
       // Read file as base64
       const fileContent = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: 'base64',
+        encoding: FileSystem.EncodingType.Base64,
       });
 
       // Convert base64 to blob
@@ -166,12 +166,17 @@ export class FileTransferService {
       });
 
       // Save file to device
-      const downloadDir = (FileSystem.documentDirectory || '') + 'Downloads/';
+      const documentDirectory = FileSystem.documentDirectory;
+      if (!documentDirectory) {
+        throw new Error('Document directory not available');
+      }
+      
+      const downloadDir = documentDirectory + 'Downloads/';
       await FileSystem.makeDirectoryAsync(downloadDir, { intermediates: true });
       
       const filePath = downloadDir + fileName;
       await FileSystem.writeAsStringAsync(filePath, base64Data, {
-        encoding: 'base64',
+        encoding: FileSystem.EncodingType.Base64,
       });
 
       this.notifyProgress({
