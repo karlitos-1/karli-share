@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../app/integrations/supabase/client';
 import { Tables } from '../app/integrations/supabase/types';
 import { useAuth } from './useAuth';
@@ -12,7 +12,7 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchNotifications = useCallback(async () => {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
@@ -20,16 +20,11 @@ export function useNotifications() {
       return;
     }
 
-    fetchNotifications();
-    subscribeToNotifications();
-  }, [user]);
-
-  const fetchNotifications = async () => {
     try {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -44,9 +39,9 @@ export function useNotifications() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const subscribeToNotifications = () => {
+  const subscribeToNotifications = useCallback(() => {
     if (!user) return;
 
     const subscription = supabase
@@ -69,7 +64,13 @@ export function useNotifications() {
     return () => {
       subscription.unsubscribe();
     };
-  };
+  }, [user, fetchNotifications]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const unsubscribe = subscribeToNotifications();
+    return unsubscribe;
+  }, [fetchNotifications, subscribeToNotifications]);
 
   const markAsRead = async (id: string) => {
     try {

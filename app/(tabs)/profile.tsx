@@ -1,5 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import { colors, commonStyles } from '../../styles/commonStyles';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import SimpleBottomSheet from '../../components/BottomSheet';
 import {
   View,
   Text,
@@ -9,32 +12,198 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import { supabase } from '../../app/integrations/supabase/client';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, commonStyles } from '../../styles/commonStyles';
-import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../integrations/supabase/client';
-import { Tables } from '../../integrations/supabase/types';
 import Icon from '../../components/Icon';
-import SimpleBottomSheet from '../../components/BottomSheet';
+import { Tables } from '../../app/integrations/supabase/types';
 
 type Profile = Tables<'profiles'>;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  settingsButton: {
+    padding: 8,
+  },
+  profileCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    ...commonStyles.shadow,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.background,
+  },
+  profileInfo: {
+    alignItems: 'center',
+  },
+  displayName: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  username: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  editButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginTop: 16,
+    alignSelf: 'center',
+  },
+  editButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  statsContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    ...commonStyles.shadow,
+  },
+  statsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  bottomSheetContent: {
+    padding: 20,
+  },
+  bottomSheetTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  button: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  primaryButton: {
+    backgroundColor: colors.primary,
+  },
+  secondaryButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  primaryButtonText: {
+    color: colors.background,
+  },
+  secondaryButtonText: {
+    color: colors.text,
+  },
+  signOutButton: {
+    backgroundColor: colors.error,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  signOutButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [displayName, setDisplayName] = useState('');
-  const [username, setUsername] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
+  const [showEditSheet, setShowEditSheet] = useState(false);
+  const [editForm, setEditForm] = useState({
+    display_name: '',
+    username: '',
+  });
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-    }
-  }, [user]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -51,8 +220,10 @@ export default function ProfileScreen() {
 
       if (data) {
         setProfile(data);
-        setDisplayName(data.display_name || '');
-        setUsername(data.username || '');
+        setEditForm({
+          display_name: data.display_name || '',
+          username: data.username || '',
+        });
       } else {
         // Create profile if it doesn't exist
         await createProfile();
@@ -62,21 +233,23 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
 
   const createProfile = async () => {
     if (!user) return;
 
     try {
-      const newProfile = {
-        user_id: user.id,
-        username: user.email?.split('@')[0] || 'user',
-        display_name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
-      };
-
       const { data, error } = await supabase
         .from('profiles')
-        .insert(newProfile)
+        .insert({
+          user_id: user.id,
+          display_name: user.email?.split('@')[0] || 'User',
+          username: user.email?.split('@')[0] || 'user',
+        })
         .select()
         .single();
 
@@ -86,8 +259,10 @@ export default function ProfileScreen() {
       }
 
       setProfile(data);
-      setDisplayName(data.display_name || '');
-      setUsername(data.username || '');
+      setEditForm({
+        display_name: data.display_name || '',
+        username: data.username || '',
+      });
     } catch (error) {
       console.error('Error creating profile:', error);
     }
@@ -96,17 +271,13 @@ export default function ProfileScreen() {
   const handleSaveProfile = async () => {
     if (!user || !profile) return;
 
-    if (!displayName.trim() || !username.trim()) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
-      return;
-    }
-
     try {
       const { data, error } = await supabase
         .from('profiles')
         .update({
-          display_name: displayName.trim(),
-          username: username.trim(),
+          display_name: editForm.display_name,
+          username: editForm.username,
+          updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id)
         .select()
@@ -114,30 +285,34 @@ export default function ProfileScreen() {
 
       if (error) {
         console.error('Error updating profile:', error);
-        Alert.alert('Erreur', 'Impossible de mettre à jour le profil');
+        Alert.alert('Error', 'Failed to update profile');
         return;
       }
 
       setProfile(data);
-      setEditing(false);
-      Alert.alert('Succès', 'Profil mis à jour avec succès');
+      setShowEditSheet(false);
+      Alert.alert('Success', 'Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Erreur', 'Une erreur inattendue s\'est produite');
+      Alert.alert('Error', 'Failed to update profile');
     }
   };
 
   const handleSignOut = async () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      'Sign Out',
+      'Are you sure you want to sign out?',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Déconnexion',
+          text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
-            await signOut();
+            try {
+              await signOut();
+            } catch (error) {
+              console.error('Error signing out:', error);
+            }
           },
         },
       ]
@@ -146,354 +321,121 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={commonStyles.container}>
-        <View style={[commonStyles.content, { justifyContent: 'center' }]}>
-          <Text style={commonStyles.text}>Chargement...</Text>
+      <SafeAreaView style={styles.container}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={{ color: colors.text }}>Loading...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={commonStyles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Profil</Text>
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={() => setShowSettings(true)}
-        >
-          <Icon name="settings-outline" size={24} color={colors.text} />
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Profile</Text>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => setShowEditSheet(true)}
+          >
+            <Icon name="settings" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {profile?.display_name?.charAt(0).toUpperCase() || 'U'}
+            </Text>
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.displayName}>
+              {profile?.display_name || 'User'}
+            </Text>
+            <Text style={styles.username}>
+              @{profile?.username || 'username'}
+            </Text>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => setShowEditSheet(true)}
+            >
+              <Text style={styles.editButtonText}>Edit Profile</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsTitle}>Statistics</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statLabel}>Files Sent</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statLabel}>Files Received</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>0 MB</Text>
+              <Text style={styles.statLabel}>Data Transferred</Text>
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
         </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <Icon name="person" size={48} color={colors.primary} />
-          </View>
-
-          {editing ? (
-            <View style={styles.editForm}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Nom d'affichage</Text>
-                <TextInput
-                  style={styles.input}
-                  value={displayName}
-                  onChangeText={setDisplayName}
-                  placeholder="Votre nom d'affichage"
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Nom d'utilisateur</Text>
-                <TextInput
-                  style={styles.input}
-                  value={username}
-                  onChangeText={setUsername}
-                  placeholder="Votre nom d'utilisateur"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.editButtons}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    setEditing(false);
-                    setDisplayName(profile?.display_name || '');
-                    setUsername(profile?.username || '');
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>Annuler</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.saveButton}
-                  onPress={handleSaveProfile}
-                >
-                  <Text style={styles.saveButtonText}>Enregistrer</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.profileInfo}>
-              <Text style={styles.displayName}>{profile?.display_name}</Text>
-              <Text style={styles.username}>@{profile?.username}</Text>
-              <Text style={styles.email}>{user?.email}</Text>
-              
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => setEditing(true)}
-              >
-                <Icon name="create-outline" size={16} color={colors.primary} />
-                <Text style={styles.editButtonText}>Modifier le profil</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Statistiques</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Icon name="arrow-up-outline" size={24} color={colors.primary} />
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Envoyés</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Icon name="arrow-down-outline" size={24} color={colors.success} />
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Reçus</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Icon name="cloud-outline" size={24} color={colors.warning} />
-              <Text style={styles.statNumber}>0 MB</Text>
-              <Text style={styles.statLabel}>Transférés</Text>
-            </View>
-          </View>
-        </View>
       </ScrollView>
 
       <SimpleBottomSheet
-        isVisible={showSettings}
-        onClose={() => setShowSettings(false)}
+        isVisible={showEditSheet}
+        onClose={() => setShowEditSheet(false)}
       >
-        <View style={styles.settingsContent}>
-          <Text style={styles.settingsTitle}>Paramètres</Text>
+        <View style={styles.bottomSheetContent}>
+          <Text style={styles.bottomSheetTitle}>Edit Profile</Text>
           
-          <TouchableOpacity style={styles.settingsItem}>
-            <Icon name="notifications-outline" size={24} color={colors.text} />
-            <Text style={styles.settingsItemText}>Notifications</Text>
-            <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Display Name</Text>
+            <TextInput
+              style={styles.input}
+              value={editForm.display_name}
+              onChangeText={(text) => setEditForm({ ...editForm, display_name: text })}
+              placeholder="Enter your display name"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
 
-          <TouchableOpacity style={styles.settingsItem}>
-            <Icon name="shield-outline" size={24} color={colors.text} />
-            <Text style={styles.settingsItemText}>Confidentialité</Text>
-            <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Username</Text>
+            <TextInput
+              style={styles.input}
+              value={editForm.username}
+              onChangeText={(text) => setEditForm({ ...editForm, username: text })}
+              placeholder="Enter your username"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
 
-          <TouchableOpacity style={styles.settingsItem}>
-            <Icon name="help-circle-outline" size={24} color={colors.text} />
-            <Text style={styles.settingsItemText}>Aide</Text>
-            <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingsItem}>
-            <Icon name="information-circle-outline" size={24} color={colors.text} />
-            <Text style={styles.settingsItemText}>À propos</Text>
-            <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.settingsItem, styles.signOutItem]}
-            onPress={handleSignOut}
-          >
-            <Icon name="log-out-outline" size={24} color={colors.error} />
-            <Text style={[styles.settingsItemText, { color: colors.error }]}>
-              Déconnexion
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.button, styles.secondaryButton]}
+              onPress={() => setShowEditSheet(false)}
+            >
+              <Text style={[styles.buttonText, styles.secondaryButtonText]}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.primaryButton]}
+              onPress={handleSaveProfile}
+            >
+              <Text style={[styles.buttonText, styles.primaryButtonText]}>
+                Save
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SimpleBottomSheet>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundAlt,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  profileSection: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 32,
-  },
-  avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: colors.backgroundAlt,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    borderWidth: 3,
-    borderColor: colors.primary,
-  },
-  profileInfo: {
-    alignItems: 'center',
-  },
-  displayName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  username: {
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  email: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 16,
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.backgroundAlt,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  editButtonText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '500',
-  },
-  editForm: {
-    width: '100%',
-    maxWidth: 300,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: colors.backgroundAlt,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  editButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: colors.backgroundAlt,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    fontSize: 16,
-    color: colors.background,
-    fontWeight: '600',
-  },
-  statsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  settingsContent: {
-    padding: 20,
-  },
-  settingsTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 20,
-  },
-  settingsItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    backgroundColor: colors.backgroundAlt,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  settingsItemText: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.text,
-    marginLeft: 16,
-    fontWeight: '500',
-  },
-  signOutItem: {
-    marginTop: 16,
-    backgroundColor: colors.error + '10',
-  },
-});

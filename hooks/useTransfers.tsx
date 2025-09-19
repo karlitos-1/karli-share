@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../app/integrations/supabase/client';
 import { Tables } from '../app/integrations/supabase/types';
 import { useAuth } from './useAuth';
@@ -11,23 +11,18 @@ export function useTransfers() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchTransfers = useCallback(async () => {
     if (!user) {
       setTransfers([]);
       setLoading(false);
       return;
     }
 
-    fetchTransfers();
-    subscribeToTransfers();
-  }, [user]);
-
-  const fetchTransfers = async () => {
     try {
       const { data, error } = await supabase
         .from('transfers')
         .select('*')
-        .or(`sender_id.eq.${user?.id},receiver_id.eq.${user?.id}`)
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -41,9 +36,9 @@ export function useTransfers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const subscribeToTransfers = () => {
+  const subscribeToTransfers = useCallback(() => {
     if (!user) return;
 
     const subscription = supabase
@@ -66,7 +61,13 @@ export function useTransfers() {
     return () => {
       subscription.unsubscribe();
     };
-  };
+  }, [user, fetchTransfers]);
+
+  useEffect(() => {
+    fetchTransfers();
+    const unsubscribe = subscribeToTransfers();
+    return unsubscribe;
+  }, [fetchTransfers, subscribeToTransfers]);
 
   const createTransfer = async (transferData: Omit<Tables<'transfers'>['Insert'], 'sender_id'>) => {
     if (!user) return null;
