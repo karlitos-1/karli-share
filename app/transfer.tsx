@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -32,28 +32,26 @@ export default function TransferScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentTransfer, setCurrentTransfer] = useState<any>(null);
 
-  const file = params.fileName ? {
-    name: params.fileName as string,
-    size: parseInt(params.fileSize as string) || 0,
-    type: params.fileType as string,
-    uri: params.fileUri as string,
-  } : null;
+  const file = useMemo(() => {
+    return params.fileName ? {
+      name: params.fileName as string,
+      size: parseInt(params.fileSize as string) || 0,
+      type: params.fileType as string,
+      uri: params.fileUri as string,
+    } : null;
+  }, [params.fileName, params.fileSize, params.fileType, params.fileUri]);
 
-  const app = params.appName ? {
-    name: params.appName as string,
-    packageName: params.appPackage as string,
-    version: params.appVersion as string,
-    icon: params.appIcon as string,
-    size: parseInt(params.fileSize as string) || 0,
-  } : null;
+  const app = useMemo(() => {
+    return params.appName ? {
+      name: params.appName as string,
+      packageName: params.appPackage as string,
+      version: params.appVersion as string,
+      icon: params.appIcon as string,
+      size: parseInt(params.fileSize as string) || 0,
+    } : null;
+  }, [params.appName, params.appPackage, params.appVersion, params.appIcon, params.fileSize]);
 
   const isApplication = params.fileType === 'application';
-
-  useEffect(() => {
-    if ((file || app) && deviceId) {
-      generateQRCode();
-    }
-  }, [file, app, deviceId, generateQRCode]);
 
   const generateQRCode = useCallback(async () => {
     if (!deviceId || (!file && !app)) return;
@@ -97,12 +95,18 @@ export default function TransferScreen() {
     }
   }, [file, app, deviceId, transferMethod, isApplication]);
 
+  useEffect(() => {
+    if ((file || app) && deviceId) {
+      generateQRCode();
+    }
+  }, [file, app, deviceId, generateQRCode]);
+
   const handleMethodChange = (method: 'qr_code' | 'wifi_direct' | 'internet') => {
     setTransferMethod(method);
     generateQRCode();
   };
 
-  const handleStartTransfer = async () => {
+  const handleStartTransfer = useCallback(async () => {
     if (!deviceId || (!file && !app)) return;
 
     try {
@@ -151,7 +155,7 @@ export default function TransferScreen() {
       console.error('Error creating transfer:', error);
       Alert.alert('Erreur', 'Impossible de créer le transfert');
     }
-  };
+  }, [file, app, deviceId, transferMethod, isApplication, qrCodeData, createTransfer, uploadFile]);
 
   const getMethodIcon = (method: string) => {
     switch (method) {

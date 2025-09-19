@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthContextType {
@@ -13,11 +13,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    initializeDevice();
-  }, []);
-
-  const initializeDevice = async () => {
+  const initializeDevice = useCallback(async () => {
     try {
       // Check if device ID already exists
       let storedDeviceId = await AsyncStorage.getItem('device_id');
@@ -39,7 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    initializeDevice();
+  }, [initializeDevice]);
 
   const generateDeviceId = (): string => {
     return 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();

@@ -4,11 +4,11 @@
     "slug": "karli-share",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/natively-dark.png",
+    "icon": "./assets/images/ea7ba2fc-1cf2-4330-a169-2ab9480db233.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/natively-dark.png",
+      "image": "./assets/images/ea7ba2fc-1cf2-4330-a169-2ab9480db233.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
@@ -21,14 +21,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/natively-dark.png",
+        "foregroundImage": "./assets/images/ea7ba2fc-1cf2-4330-a169-2ab9480db233.png",
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.pegg.karlishare"
     },
     "web": {
-      "favicon": "./assets/images/final_quest_240x240.png",
+      "favicon": "./assets/images/ea7ba2fc-1cf2-4330-a169-2ab9480db233.png",
       "bundler": "metro"
     },
     "plugins": [

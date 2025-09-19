@@ -28,6 +28,12 @@ export default function ReceiveScreen() {
   const [sessionCode, setSessionCode] = useState<string>('');
   const [scanned, setScanned] = useState(false);
 
+  const generateSession = useCallback(() => {
+    const code = generateSessionCode();
+    setSessionCode(code);
+    console.log('Generated session code:', code);
+  }, []);
+
   useEffect(() => {
     if (mode === 'scan') {
       getBarCodeScannerPermissions();
@@ -39,12 +45,6 @@ export default function ReceiveScreen() {
       generateSession();
     }
   }, [mode, generateSession]);
-
-  const generateSession = useCallback(() => {
-    const code = generateSessionCode();
-    setSessionCode(code);
-    console.log('Generated session code:', code);
-  }, []);
 
   const getBarCodeScannerPermissions = async () => {
     const { status } = await BarCodeScanner.requestPermissionsAsync();
