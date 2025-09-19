@@ -1,5 +1,5 @@
 {
-  "name": "Natively",
+  "name": "karli-share",
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
@@ -27,9 +27,11 @@
     "difflib": "^0.2.4",
     "eas": "^0.1.0",
     "expo": "~54.0.1",
+    "expo-application": "^7.0.7",
     "expo-barcode-scanner": "^13.0.1",
     "expo-blur": "^15.0.6",
     "expo-constants": "~18.0.8",
+    "expo-device": "^8.0.8",
     "expo-document-picker": "^14.0.7",
     "expo-file-system": "^19.0.14",
     "expo-font": "^14.0.7",

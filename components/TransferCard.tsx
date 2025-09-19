@@ -5,10 +5,13 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, shadows } from '../styles/commonStyles';
 import { Tables } from '../app/integrations/supabase/types';
-import { colors } from '../styles/commonStyles';
 import { formatFileSize } from '../utils/fileUtils';
+import { formatAppSize } from '../utils/appUtils';
 import Icon from './Icon';
 
 interface TransferCardProps {
@@ -19,50 +22,37 @@ interface TransferCardProps {
 
 export default function TransferCard({ transfer, onPress, currentUserId }: TransferCardProps) {
   const isSender = transfer.sender_device_id === currentUserId;
-  const isReceiver = transfer.receiver_device_id === currentUserId;
-
+  const isApplication = transfer.file_type === 'application';
+  
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
-        return colors.success;
-      case 'in_progress':
-        return colors.warning;
-      case 'failed':
-      case 'cancelled':
-        return colors.error;
-      default:
-        return colors.textSecondary;
+      case 'pending': return colors.warning;
+      case 'in_progress': return colors.primary;
+      case 'completed': return colors.success;
+      case 'failed': return colors.error;
+      case 'cancelled': return colors.textSecondary;
+      default: return colors.textSecondary;
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'pending':
-        return 'En attente';
-      case 'in_progress':
-        return 'En cours';
-      case 'completed':
-        return 'Terminé';
-      case 'failed':
-        return 'Échec';
-      case 'cancelled':
-        return 'Annulé';
-      default:
-        return status;
+      case 'pending': return 'En attente';
+      case 'in_progress': return 'En cours';
+      case 'completed': return 'Terminé';
+      case 'failed': return 'Échec';
+      case 'cancelled': return 'Annulé';
+      default: return 'Inconnu';
     }
   };
 
   const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) {
-      return 'image-outline';
-    } else if (fileType.startsWith('video/')) {
-      return 'videocam-outline';
-    } else if (fileType.startsWith('audio/')) {
-      return 'musical-notes-outline';
-    } else if (fileType.includes('pdf')) {
-      return 'document-text-outline';
-    } else {
-      return 'document-outline';
+    switch (fileType) {
+      case 'image': return 'image-outline';
+      case 'video': return 'videocam-outline';
+      case 'application': return 'apps-outline';
+      case 'document': return 'document-outline';
+      default: return 'document-outline';
     }
   };
 
@@ -80,79 +70,97 @@ export default function TransferCard({ transfer, onPress, currentUserId }: Trans
       return date.toLocaleDateString('fr-FR', {
         day: 'numeric',
         month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     }
   };
 
+  const getTransferTypeGradient = () => {
+    if (isApplication) {
+      return [colors.warning, '#D97706'];
+    }
+    return isSender ? [colors.primary, colors.secondary] : [colors.success, '#059669'];
+  };
+
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
-      <View style={styles.iconContainer}>
-        <Icon
-          name={getFileIcon(transfer.file_type)}
-          size={24}
-          color={colors.primary}
-        />
-      </View>
-
-      <View style={styles.content}>
+      <View style={styles.card}>
         <View style={styles.header}>
-          <Text style={styles.fileName} numberOfLines={1}>
-            {transfer.file_name}
-          </Text>
-          <View style={styles.directionContainer}>
-            <Icon
-              name={isSender ? 'arrow-up-outline' : 'arrow-down-outline'}
-              size={16}
-              color={isSender ? colors.primary : colors.success}
-            />
-            <Text style={styles.directionText}>
-              {isSender ? 'Envoyé' : 'Reçu'}
+          <View style={styles.typeIndicator}>
+            <LinearGradient
+              colors={getTransferTypeGradient()}
+              style={styles.typeGradient}
+            >
+              <Icon 
+                name={getFileIcon(transfer.file_type)} 
+                size={20} 
+                color={colors.background} 
+              />
+            </LinearGradient>
+          </View>
+          
+          <View style={styles.headerInfo}>
+            <Text style={styles.fileName} numberOfLines={1}>
+              {transfer.file_name}
             </Text>
+            <View style={styles.metaRow}>
+              <Text style={styles.fileSize}>
+                {isApplication ? formatAppSize(transfer.file_size) : formatFileSize(transfer.file_size)}
+              </Text>
+              <View style={styles.dot} />
+              <Text style={styles.transferType}>
+                {isSender ? 'Envoyé' : 'Reçu'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(transfer.status) + '20' }]}>
+              <Text style={[styles.statusText, { color: getStatusColor(transfer.status) }]}>
+                {getStatusText(transfer.status)}
+              </Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.details}>
-          <Text style={styles.fileSize}>
-            {formatFileSize(transfer.file_size)}
-          </Text>
-          <Text style={styles.separator}>•</Text>
-          <Text style={styles.date}>
+        <View style={styles.footer}>
+          <View style={styles.methodContainer}>
+            <Icon 
+              name={transfer.transfer_method === 'qr_code' ? 'qr-code-outline' : 
+                   transfer.transfer_method === 'wifi_direct' ? 'wifi-outline' : 
+                   'cloud-outline'} 
+              size={16} 
+              color={colors.textSecondary} 
+            />
+            <Text style={styles.methodText}>
+              {transfer.transfer_method === 'qr_code' ? 'QR Code' :
+               transfer.transfer_method === 'wifi_direct' ? 'Wi-Fi Direct' :
+               'Internet'}
+            </Text>
+          </View>
+          
+          <Text style={styles.timestamp}>
             {formatDate(transfer.created_at)}
           </Text>
         </View>
 
-        <View style={styles.footer}>
-          <View style={styles.statusContainer}>
-            <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: getStatusColor(transfer.status) },
-              ]}
-            />
-            <Text
-              style={[
-                styles.statusText,
-                { color: getStatusColor(transfer.status) },
-              ]}
-            >
-              {getStatusText(transfer.status)}
-            </Text>
-          </View>
-
-          {transfer.progress !== null && transfer.progress < 100 && (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${transfer.progress}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressText}>{transfer.progress}%</Text>
+        {transfer.progress !== null && transfer.progress > 0 && transfer.progress < 100 && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { 
+                    width: `${transfer.progress}%`,
+                    backgroundColor: getStatusColor(transfer.status)
+                  }
+                ]} 
+              />
             </View>
-          )}
-        </View>
+            <Text style={styles.progressText}>{transfer.progress}%</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -160,105 +168,115 @@ export default function TransferCard({ transfer, onPress, currentUserId }: Trans
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    backgroundColor: colors.backgroundAlt,
-    borderRadius: 12,
+    marginVertical: 6,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  content: {
-    flex: 1,
+    ...shadows.small,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 12,
+  },
+  typeIndicator: {
+    marginRight: 12,
+  },
+  typeGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerInfo: {
+    flex: 1,
+    marginRight: 12,
   },
   fileName: {
-    flex: 1,
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    marginRight: 8,
+    marginBottom: 4,
   },
-  directionContainer: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  directionText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  details: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
   },
   fileSize: {
     fontSize: 14,
     color: colors.textSecondary,
   },
-  separator: {
-    fontSize: 14,
-    color: colors.textSecondary,
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.textSecondary,
     marginHorizontal: 8,
   },
-  date: {
+  transferType: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  statusContainer: {
+    alignItems: 'flex-end',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  statusContainer: {
+  methodContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
+  methodText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginLeft: 4,
   },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '500',
+  timestamp: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   progressBar: {
-    width: 60,
+    flex: 1,
     height: 4,
-    backgroundColor: colors.border,
+    backgroundColor: colors.backgroundAlt,
     borderRadius: 2,
+    marginRight: 8,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: colors.primary,
+    borderRadius: 2,
   },
   progressText: {
     fontSize: 12,
+    fontWeight: '600',
     color: colors.textSecondary,
-    fontWeight: '500',
+    minWidth: 32,
+    textAlign: 'right',
   },
 });

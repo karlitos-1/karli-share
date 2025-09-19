@@ -7,8 +7,10 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, commonStyles } from '../../styles/commonStyles';
 import { useAuth } from '../../hooks/useAuth';
 import { useTransfers } from '../../hooks/useTransfers';
@@ -16,12 +18,15 @@ import { useNotifications } from '../../hooks/useNotifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import OnboardingOverlay from '../../components/OnboardingOverlay';
 import FilePickerModal from '../../components/FilePickerModal';
+import AppPickerModal from '../../components/AppPickerModal';
 import TransferCard from '../../components/TransferCard';
 import Icon from '../../components/Icon';
 import { pickDocument, pickImage, pickVideo, FileInfo } from '../../utils/fileUtils';
+import { AppInfo } from '../../utils/appUtils';
 import { router } from 'expo-router';
 
 const ONBOARDING_KEY = 'karli_share_onboarding_completed';
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const { deviceId, loading: authLoading } = useAuth();
@@ -29,6 +34,7 @@ export default function HomeScreen() {
   const { unreadCount } = useNotifications();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showFilePicker, setShowFilePicker] = useState(false);
+  const [showAppPicker, setShowAppPicker] = useState(false);
 
   useEffect(() => {
     checkOnboarding();
@@ -58,7 +64,6 @@ export default function HomeScreen() {
     if (!file) return;
 
     console.log('File picked:', file);
-    // Navigate to transfer screen with file data
     router.push({
       pathname: '/transfer',
       params: {
@@ -66,6 +71,22 @@ export default function HomeScreen() {
         fileSize: file.size.toString(),
         fileType: file.type,
         fileUri: file.uri,
+      },
+    });
+  };
+
+  const handleAppSelected = async (app: AppInfo) => {
+    console.log('App selected:', app);
+    router.push({
+      pathname: '/transfer',
+      params: {
+        fileName: `${app.appName}.apk`,
+        fileSize: (app.apkSize || 0).toString(),
+        fileType: 'application',
+        appPackage: app.packageName,
+        appName: app.appName,
+        appVersion: app.versionName || '1.0.0',
+        appIcon: app.iconUrl || '',
       },
     });
   };
@@ -98,54 +119,111 @@ export default function HomeScreen() {
   const recentTransfers = transfers.slice(0, 3);
 
   return (
-    <SafeAreaView style={commonStyles.container}>
+    <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Bonjour ! 👋</Text>
-            <Text style={styles.subtitle}>Prêt à partager vos fichiers ?</Text>
+        {/* Header with gradient */}
+        <LinearGradient
+          colors={[colors.primary, colors.secondary]}
+          style={styles.headerGradient}
+        >
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.greeting}>Karli'Share ✨</Text>
+              <Text style={styles.subtitle}>Partagez facilement vos contenus</Text>
+            </View>
+            {unreadCount > 0 && (
+              <TouchableOpacity
+                style={styles.notificationButton}
+                onPress={() => router.push('/notifications')}
+              >
+                <Icon name="notifications-outline" size={24} color={colors.background} />
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationCount}>{unreadCount}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
-          {unreadCount > 0 && (
+        </LinearGradient>
+
+        {/* Quick Actions Grid */}
+        <View style={styles.quickActionsContainer}>
+          <Text style={styles.sectionTitle}>Actions rapides</Text>
+          
+          <View style={styles.quickActionsGrid}>
             <TouchableOpacity
-              style={styles.notificationButton}
-              onPress={() => router.push('/notifications')}
+              style={[styles.quickAction, styles.primaryAction]}
+              onPress={() => setShowFilePicker(true)}
             >
-              <Icon name="notifications-outline" size={24} color={colors.text} />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationCount}>{unreadCount}</Text>
-              </View>
+              <LinearGradient
+                colors={[colors.success, '#059669']}
+                style={styles.actionGradient}
+              >
+                <Icon name="document-outline" size={28} color={colors.background} />
+                <Text style={styles.actionText}>Fichiers</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          )}
-        </View>
 
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={styles.primaryAction}
-            onPress={() => setShowFilePicker(true)}
-          >
-            <Icon name="add" size={32} color={colors.background} />
-            <Text style={styles.primaryActionText}>Envoyer un fichier</Text>
-          </TouchableOpacity>
-
-          <View style={styles.secondaryActions}>
             <TouchableOpacity
-              style={styles.secondaryAction}
+              style={[styles.quickAction, styles.primaryAction]}
+              onPress={() => setShowAppPicker(true)}
+            >
+              <LinearGradient
+                colors={[colors.warning, '#D97706']}
+                style={styles.actionGradient}
+              >
+                <Icon name="apps-outline" size={28} color={colors.background} />
+                <Text style={styles.actionText}>Applications</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickAction, styles.secondaryAction]}
               onPress={() => router.push('/(tabs)/receive')}
             >
-              <Icon name="qr-code-outline" size={24} color={colors.primary} />
-              <Text style={styles.secondaryActionText}>Scanner QR</Text>
+              <Icon name="qr-code-outline" size={28} color={colors.primary} />
+              <Text style={[styles.actionText, { color: colors.primary }]}>Scanner</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.secondaryAction}
+              style={[styles.quickAction, styles.secondaryAction]}
               onPress={() => router.push('/(tabs)/receive')}
             >
-              <Icon name="wifi-outline" size={24} color={colors.primary} />
-              <Text style={styles.secondaryActionText}>Recevoir</Text>
+              <Icon name="wifi-outline" size={28} color={colors.primary} />
+              <Text style={[styles.actionText, { color: colors.primary }]}>Recevoir</Text>
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* Stats Cards */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Icon name="arrow-up-outline" size={24} color={colors.success} />
+              <Text style={styles.statNumber}>
+                {transfers.filter(t => t.sender_device_id === deviceId).length}
+              </Text>
+              <Text style={styles.statLabel}>Envoyés</Text>
+            </View>
+            
+            <View style={styles.statCard}>
+              <Icon name="arrow-down-outline" size={24} color={colors.primary} />
+              <Text style={styles.statNumber}>
+                {transfers.filter(t => t.receiver_device_id === deviceId).length}
+              </Text>
+              <Text style={styles.statLabel}>Reçus</Text>
+            </View>
+            
+            <View style={styles.statCard}>
+              <Icon name="checkmark-circle-outline" size={24} color={colors.success} />
+              <Text style={styles.statNumber}>
+                {transfers.filter(t => t.status === 'completed').length}
+              </Text>
+              <Text style={styles.statLabel}>Réussis</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Recent Transfers */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Transferts récents</Text>
@@ -155,7 +233,9 @@ export default function HomeScreen() {
           </View>
 
           {transfersLoading ? (
-            <Text style={styles.loadingText}>Chargement...</Text>
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Chargement...</Text>
+            </View>
           ) : recentTransfers.length > 0 ? (
             recentTransfers.map((transfer) => (
               <TransferCard
@@ -170,7 +250,7 @@ export default function HomeScreen() {
               <Icon name="folder-open-outline" size={48} color={colors.textSecondary} />
               <Text style={styles.emptyText}>Aucun transfert récent</Text>
               <Text style={styles.emptySubtext}>
-                Commencez par envoyer votre premier fichier
+                Commencez par partager votre premier contenu
               </Text>
             </View>
           )}
@@ -189,13 +269,28 @@ export default function HomeScreen() {
         onPickVideo={handlePickVideo}
         onPickDocument={handlePickDocument}
       />
+
+      <AppPickerModal
+        visible={showAppPicker}
+        onClose={() => setShowAppPicker(false)}
+        onSelectApp={handleAppSelected}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   scrollView: {
     flex: 1,
+  },
+  headerGradient: {
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    marginBottom: 24,
   },
   header: {
     flexDirection: 'row',
@@ -203,21 +298,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   greeting: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.background,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: colors.background + 'CC',
   },
   notificationButton: {
     position: 'relative',
     padding: 8,
+    backgroundColor: colors.background + '20',
+    borderRadius: 12,
   },
   notificationBadge: {
     position: 'absolute',
@@ -235,43 +332,70 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  quickActions: {
+  quickActionsContainer: {
     paddingHorizontal: 20,
-    marginBottom: 32,
+    marginBottom: 24,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  quickAction: {
+    width: (width - 56) / 2,
+    height: 120,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   primaryAction: {
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 16,
-    boxShadow: '0px 4px 12px rgba(37, 99, 235, 0.3)',
-    elevation: 4,
+    // Gradient will be applied via LinearGradient
   },
-  primaryActionText: {
+  secondaryAction: {
+    backgroundColor: colors.backgroundAlt,
+    borderWidth: 2,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionText: {
     color: colors.background,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     marginTop: 8,
   },
-  secondaryActions: {
+  statsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  statsGrid: {
     flexDirection: 'row',
     gap: 12,
   },
-  secondaryAction: {
+  statCard: {
     flex: 1,
     backgroundColor: colors.backgroundAlt,
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
   },
-  secondaryActionText: {
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '800',
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '500',
     marginTop: 8,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
   section: {
     paddingHorizontal: 20,
@@ -291,17 +415,23 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontSize: 14,
     color: colors.primary,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
   },
   loadingText: {
-    textAlign: 'center',
     color: colors.textSecondary,
     fontSize: 16,
-    paddingVertical: 32,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 40,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   emptyText: {
     fontSize: 16,
@@ -314,5 +444,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
 });
