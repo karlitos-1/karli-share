@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -127,9 +128,18 @@ export default function HomeScreen() {
           style={styles.headerGradient}
         >
           <View style={styles.header}>
-            <View>
-              <Text style={styles.greeting}>Karli'Share ✨</Text>
-              <Text style={styles.subtitle}>Partagez facilement vos contenus</Text>
+            <View style={styles.headerContent}>
+              <View style={styles.logoContainer}>
+                <Image
+                  source={require('../../assets/images/ea7ba2fc-1cf2-4330-a169-2ab9480db233.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+                <View style={styles.titleContainer}>
+                  <Text style={styles.greeting}>Karli&apos;Share</Text>
+                  <Text style={styles.subtitle}>Partagez facilement vos contenus</Text>
+                </View>
+              </View>
             </View>
             {unreadCount > 0 && (
               <TouchableOpacity
@@ -299,6 +309,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 32,
+  },
+  headerContent: {
+    flex: 1,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 48,
+    height: 48,
+    marginRight: 12,
+  },
+  titleContainer: {
+    flex: 1,
   },
   greeting: {
     fontSize: 28,

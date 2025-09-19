@@ -32,6 +32,7 @@ export default function ProfileScreen() {
     deviceName: 'Mon appareil',
   });
   const [showEditSheet, setShowEditSheet] = useState(false);
+  const [showSettingsSheet, setShowSettingsSheet] = useState(false);
   const [editForm, setEditForm] = useState<ProfileData>({
     displayName: '',
     deviceName: '',
@@ -97,6 +98,7 @@ export default function ProfileScreen() {
               };
               setProfile(defaultProfile);
               setEditForm(defaultProfile);
+              setShowSettingsSheet(false);
             } catch (error) {
               console.error('Error clearing data:', error);
               Alert.alert('Erreur', 'Impossible d\'effacer les données');
@@ -105,6 +107,17 @@ export default function ProfileScreen() {
         },
       ]
     );
+  };
+
+  const handleEditProfile = () => {
+    console.log('Opening edit profile sheet');
+    setEditForm(profile);
+    setShowEditSheet(true);
+  };
+
+  const handleSettings = () => {
+    console.log('Opening settings sheet');
+    setShowSettingsSheet(true);
   };
 
   // Calculate statistics
@@ -142,7 +155,7 @@ export default function ProfileScreen() {
           <Text style={styles.title}>Profil</Text>
           <TouchableOpacity
             style={styles.settingsButton}
-            onPress={() => setShowEditSheet(true)}
+            onPress={handleSettings}
           >
             <Icon name="settings" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -160,7 +173,7 @@ export default function ProfileScreen() {
             <Text style={styles.deviceId}>ID: {deviceId?.slice(-8)}</Text>
             <TouchableOpacity
               style={styles.editButton}
-              onPress={() => setShowEditSheet(true)}
+              onPress={handleEditProfile}
             >
               <Text style={styles.editButtonText}>Modifier le profil</Text>
             </TouchableOpacity>
@@ -184,15 +197,9 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
-
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity style={styles.actionButton} onPress={clearData}>
-            <Icon name="trash-outline" size={20} color={colors.error} />
-            <Text style={styles.actionButtonText}>Effacer les données</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
+      {/* Edit Profile Bottom Sheet */}
       <SimpleBottomSheet
         isVisible={showEditSheet}
         onClose={() => setShowEditSheet(false)}
@@ -242,6 +249,48 @@ export default function ProfileScreen() {
           </View>
         </View>
       </SimpleBottomSheet>
+
+      {/* Settings Bottom Sheet */}
+      <SimpleBottomSheet
+        isVisible={showSettingsSheet}
+        onClose={() => setShowSettingsSheet(false)}
+      >
+        <View style={styles.bottomSheetContent}>
+          <Text style={styles.bottomSheetTitle}>Paramètres</Text>
+          
+          <View style={styles.settingsContainer}>
+            <TouchableOpacity style={styles.settingItem} onPress={handleEditProfile}>
+              <View style={styles.settingItemLeft}>
+                <Icon name="person-outline" size={20} color={colors.primary} />
+                <Text style={styles.settingItemText}>Modifier le profil</Text>
+              </View>
+              <Icon name="chevron-forward-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <View style={styles.settingsDivider} />
+
+            <TouchableOpacity style={styles.settingItem} onPress={clearData}>
+              <View style={styles.settingItemLeft}>
+                <Icon name="trash-outline" size={20} color={colors.error} />
+                <Text style={[styles.settingItemText, { color: colors.error }]}>
+                  Effacer les données
+                </Text>
+              </View>
+              <Icon name="chevron-forward-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <View style={styles.settingsDivider} />
+
+            <View style={styles.settingItem}>
+              <View style={styles.settingItemLeft}>
+                <Icon name="information-circle-outline" size={20} color={colors.textSecondary} />
+                <Text style={styles.settingItemText}>Version de l&apos;app</Text>
+              </View>
+              <Text style={styles.versionText}>1.0.0</Text>
+            </View>
+          </View>
+        </View>
+      </SimpleBottomSheet>
     </SafeAreaView>
   );
 }
@@ -268,6 +317,10 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     padding: 8,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   profileCard: {
     backgroundColor: colors.backgroundAlt,
@@ -356,24 +409,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-  actionsContainer: {
-    marginTop: 20,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.backgroundAlt,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 12,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.error,
-  },
   bottomSheetContent: {
     padding: 20,
   },
@@ -394,7 +429,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundAlt,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
@@ -430,5 +465,36 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: colors.text,
+  },
+  settingsContainer: {
+    marginTop: 10,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+  },
+  settingItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  settingItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text,
+    marginLeft: 12,
+  },
+  settingsDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 4,
+  },
+  versionText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
 });
