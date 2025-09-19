@@ -7,13 +7,13 @@ import { useAuth } from './useAuth';
 type Notification = Tables<'notifications'>;
 
 export function useNotifications() {
-  const { user } = useAuth();
+  const { deviceId } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) {
+    if (!deviceId) {
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
@@ -24,7 +24,7 @@ export function useNotifications() {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('device_id', deviceId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -39,10 +39,10 @@ export function useNotifications() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [deviceId]);
 
   const subscribeToNotifications = useCallback(() => {
-    if (!user) return;
+    if (!deviceId) return;
 
     const subscription = supabase
       .channel('notifications')
@@ -52,7 +52,7 @@ export function useNotifications() {
           event: '*',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
+          filter: `device_id=eq.${deviceId}`,
         },
         (payload) => {
           console.log('Notification update:', payload);
@@ -64,7 +64,7 @@ export function useNotifications() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [user, fetchNotifications]);
+  }, [deviceId, fetchNotifications]);
 
   useEffect(() => {
     fetchNotifications();
@@ -92,7 +92,7 @@ export function useNotifications() {
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
-        .eq('user_id', user?.id)
+        .eq('device_id', deviceId)
         .eq('is_read', false);
 
       if (error) {

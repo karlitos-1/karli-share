@@ -6,30 +6,30 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { colors } from '../styles/commonStyles';
 import { Tables } from '../app/integrations/supabase/types';
+import { colors } from '../styles/commonStyles';
 import { formatFileSize } from '../utils/fileUtils';
 import Icon from './Icon';
 
 interface TransferCardProps {
   transfer: Tables<'transfers'>;
   onPress?: () => void;
-  currentUserId?: string;
+  currentUserId?: string | null;
 }
 
 export default function TransferCard({ transfer, onPress, currentUserId }: TransferCardProps) {
-  const isReceived = transfer.receiver_id === currentUserId;
-  const isSent = transfer.sender_id === currentUserId;
+  const isSender = transfer.sender_device_id === currentUserId;
+  const isReceiver = transfer.receiver_device_id === currentUserId;
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
         return colors.success;
+      case 'in_progress':
+        return colors.warning;
       case 'failed':
       case 'cancelled':
         return colors.error;
-      case 'in_progress':
-        return colors.warning;
       default:
         return colors.textSecondary;
     }
@@ -53,120 +53,178 @@ export default function TransferCard({ transfer, onPress, currentUserId }: Trans
   };
 
   const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) return 'image-outline';
-    if (fileType.startsWith('video/')) return 'videocam-outline';
-    if (fileType.includes('pdf')) return 'document-text-outline';
-    return 'document-outline';
+    if (fileType.startsWith('image/')) {
+      return 'image-outline';
+    } else if (fileType.startsWith('video/')) {
+      return 'videocam-outline';
+    } else if (fileType.startsWith('audio/')) {
+      return 'musical-notes-outline';
+    } else if (fileType.includes('pdf')) {
+      return 'document-text-outline';
+    } else {
+      return 'document-outline';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor(diffInHours * 60);
+      return `Il y a ${diffInMinutes} min`;
+    } else if (diffInHours < 24) {
+      return `Il y a ${Math.floor(diffInHours)}h`;
+    } else {
+      return date.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+      });
+    }
   };
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
-      <View style={styles.header}>
-        <View style={styles.fileInfo}>
-          <View style={styles.iconContainer}>
+      <View style={styles.iconContainer}>
+        <Icon
+          name={getFileIcon(transfer.file_type)}
+          size={24}
+          color={colors.primary}
+        />
+      </View>
+
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.fileName} numberOfLines={1}>
+            {transfer.file_name}
+          </Text>
+          <View style={styles.directionContainer}>
             <Icon
-              name={getFileIcon(transfer.file_type)}
-              size={24}
-              color={colors.primary}
+              name={isSender ? 'arrow-up-outline' : 'arrow-down-outline'}
+              size={16}
+              color={isSender ? colors.primary : colors.success}
             />
-          </View>
-          <View style={styles.fileDetails}>
-            <Text style={styles.fileName} numberOfLines={1}>
-              {transfer.file_name}
-            </Text>
-            <Text style={styles.fileSize}>
-              {formatFileSize(transfer.file_size)}
+            <Text style={styles.directionText}>
+              {isSender ? 'Envoyé' : 'Reçu'}
             </Text>
           </View>
         </View>
-        
-        <View style={styles.statusContainer}>
-          <View style={[styles.statusDot, { backgroundColor: getStatusColor(transfer.status) }]} />
-          <Text style={[styles.statusText, { color: getStatusColor(transfer.status) }]}>
-            {getStatusText(transfer.status)}
+
+        <View style={styles.details}>
+          <Text style={styles.fileSize}>
+            {formatFileSize(transfer.file_size)}
+          </Text>
+          <Text style={styles.separator}>•</Text>
+          <Text style={styles.date}>
+            {formatDate(transfer.created_at)}
           </Text>
         </View>
-      </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.direction}>
-          {isReceived ? 'Reçu' : 'Envoyé'}
-        </Text>
-        <Text style={styles.method}>
-          {transfer.transfer_method === 'qr_code' && 'QR Code'}
-          {transfer.transfer_method === 'wifi_direct' && 'Wi-Fi Direct'}
-          {transfer.transfer_method === 'internet' && 'Internet'}
-        </Text>
-        <Text style={styles.date}>
-          {new Date(transfer.created_at).toLocaleDateString('fr-FR', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </Text>
-      </View>
-
-      {transfer.status === 'in_progress' && (
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
+        <View style={styles.footer}>
+          <View style={styles.statusContainer}>
             <View
               style={[
-                styles.progressFill,
-                { width: `${transfer.progress}%` },
+                styles.statusDot,
+                { backgroundColor: getStatusColor(transfer.status) },
               ]}
             />
+            <Text
+              style={[
+                styles.statusText,
+                { color: getStatusColor(transfer.status) },
+              ]}
+            >
+              {getStatusText(transfer.status)}
+            </Text>
           </View>
-          <Text style={styles.progressText}>{transfer.progress}%</Text>
+
+          {transfer.progress !== null && transfer.progress < 100 && (
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${transfer.progress}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressText}>{transfer.progress}%</Text>
+            </View>
+          )}
         </View>
-      )}
+      </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.card,
+    flexDirection: 'row',
+    backgroundColor: colors.backgroundAlt,
     borderRadius: 12,
     padding: 16,
-    marginVertical: 6,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.border,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.06)',
-    elevation: 2,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  content: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  fileInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundAlt,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  fileDetails: {
-    flex: 1,
+    marginBottom: 4,
   },
   fileName: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 2,
+    marginRight: 8,
+  },
+  directionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  directionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  details: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   fileSize: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  separator: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginHorizontal: 8,
+  },
+  date: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   statusContainer: {
     flexDirection: 'row',
@@ -179,43 +237,24 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '500',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  direction: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  method: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  date: {
-    fontSize: 12,
-    color: colors.textSecondary,
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
+    gap: 8,
   },
   progressBar: {
-    flex: 1,
+    width: 60,
     height: 4,
-    backgroundColor: colors.backgroundAlt,
+    backgroundColor: colors.border,
     borderRadius: 2,
-    marginRight: 8,
+    overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     backgroundColor: colors.primary,
-    borderRadius: 2,
   },
   progressText: {
     fontSize: 12,

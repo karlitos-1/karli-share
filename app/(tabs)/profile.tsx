@@ -1,8 +1,5 @@
 
-import { colors, commonStyles } from '../../styles/commonStyles';
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import SimpleBottomSheet from '../../components/BottomSheet';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,12 +9,242 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { supabase } from '../../app/integrations/supabase/client';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { colors, commonStyles } from '../../styles/commonStyles';
+import { useAuth } from '../../hooks/useAuth';
+import { useTransfers } from '../../hooks/useTransfers';
+import SimpleBottomSheet from '../../components/BottomSheet';
 import Icon from '../../components/Icon';
-import { Tables } from '../../app/integrations/supabase/types';
 
-type Profile = Tables<'profiles'>;
+const PROFILE_KEY = 'karli_share_profile';
+
+interface ProfileData {
+  displayName: string;
+  deviceName: string;
+}
+
+export default function ProfileScreen() {
+  const { deviceId } = useAuth();
+  const { transfers } = useTransfers();
+  const [profile, setProfile] = useState<ProfileData>({
+    displayName: 'Utilisateur',
+    deviceName: 'Mon appareil',
+  });
+  const [showEditSheet, setShowEditSheet] = useState(false);
+  const [editForm, setEditForm] = useState<ProfileData>({
+    displayName: '',
+    deviceName: '',
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      const savedProfile = await AsyncStorage.getItem(PROFILE_KEY);
+      if (savedProfile) {
+        const profileData = JSON.parse(savedProfile);
+        setProfile(profileData);
+        setEditForm(profileData);
+      } else {
+        // Set default values
+        const defaultProfile = {
+          displayName: 'Utilisateur',
+          deviceName: 'Mon appareil',
+        };
+        setProfile(defaultProfile);
+        setEditForm(defaultProfile);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    try {
+      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(editForm));
+      setProfile(editForm);
+      setShowEditSheet(false);
+      Alert.alert('Succès', 'Profil mis à jour avec succès');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder le profil');
+    }
+  };
+
+  const clearData = () => {
+    Alert.alert(
+      'Effacer les données',
+      'Êtes-vous sûr de vouloir effacer toutes les données de l\'application ? Cette action est irréversible.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Effacer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear();
+              Alert.alert('Succès', 'Toutes les données ont été effacées');
+              // Reset to default values
+              const defaultProfile = {
+                displayName: 'Utilisateur',
+                deviceName: 'Mon appareil',
+              };
+              setProfile(defaultProfile);
+              setEditForm(defaultProfile);
+            } catch (error) {
+              console.error('Error clearing data:', error);
+              Alert.alert('Erreur', 'Impossible d\'effacer les données');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Calculate statistics
+  const sentTransfers = transfers.filter(t => t.sender_device_id === deviceId);
+  const receivedTransfers = transfers.filter(t => t.receiver_device_id === deviceId);
+  const totalDataTransferred = transfers.reduce((total, transfer) => {
+    if (transfer.sender_device_id === deviceId || transfer.receiver_device_id === deviceId) {
+      return total + (transfer.file_size || 0);
+    }
+    return total;
+  }, 0);
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={commonStyles.container}>
+        <View style={[commonStyles.content, { justifyContent: 'center' }]}>
+          <Text style={commonStyles.text}>Chargement...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Profil</Text>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => setShowEditSheet(true)}
+          >
+            <Icon name="settings" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {profile.displayName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.displayName}>{profile.displayName}</Text>
+            <Text style={styles.deviceName}>{profile.deviceName}</Text>
+            <Text style={styles.deviceId}>ID: {deviceId?.slice(-8)}</Text>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => setShowEditSheet(true)}
+            >
+              <Text style={styles.editButtonText}>Modifier le profil</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsTitle}>Statistiques</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{sentTransfers.length}</Text>
+              <Text style={styles.statLabel}>Fichiers envoyés</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{receivedTransfers.length}</Text>
+              <Text style={styles.statLabel}>Fichiers reçus</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{formatBytes(totalDataTransferred)}</Text>
+              <Text style={styles.statLabel}>Données transférées</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity style={styles.actionButton} onPress={clearData}>
+            <Icon name="trash-outline" size={20} color={colors.error} />
+            <Text style={styles.actionButtonText}>Effacer les données</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      <SimpleBottomSheet
+        isVisible={showEditSheet}
+        onClose={() => setShowEditSheet(false)}
+      >
+        <View style={styles.bottomSheetContent}>
+          <Text style={styles.bottomSheetTitle}>Modifier le profil</Text>
+          
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Nom d&apos;affichage</Text>
+            <TextInput
+              style={styles.input}
+              value={editForm.displayName}
+              onChangeText={(text) => setEditForm({ ...editForm, displayName: text })}
+              placeholder="Entrez votre nom"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Nom de l&apos;appareil</Text>
+            <TextInput
+              style={styles.input}
+              value={editForm.deviceName}
+              onChangeText={(text) => setEditForm({ ...editForm, deviceName: text })}
+              placeholder="Entrez le nom de votre appareil"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.button, styles.secondaryButton]}
+              onPress={() => setShowEditSheet(false)}
+            >
+              <Text style={[styles.buttonText, styles.secondaryButtonText]}>
+                Annuler
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.primaryButton]}
+              onPress={saveProfile}
+            >
+              <Text style={[styles.buttonText, styles.primaryButtonText]}>
+                Sauvegarder
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SimpleBottomSheet>
+    </SafeAreaView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -43,11 +270,12 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   profileCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.backgroundAlt,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    ...commonStyles.shadow,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   avatar: {
     width: 80,
@@ -73,9 +301,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 4,
   },
-  username: {
+  deviceName: {
     fontSize: 16,
     color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  deviceId: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontFamily: 'monospace',
   },
   editButton: {
     backgroundColor: colors.primary,
@@ -83,7 +317,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     marginTop: 16,
-    alignSelf: 'center',
   },
   editButtonText: {
     color: colors.background,
@@ -91,11 +324,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   statsContainer: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.backgroundAlt,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    ...commonStyles.shadow,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   statsTitle: {
     fontSize: 18,
@@ -106,7 +340,6 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
   statItem: {
     flex: 1,
@@ -121,6 +354,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginTop: 4,
+    textAlign: 'center',
+  },
+  actionsContainer: {
+    marginTop: 20,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundAlt,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 12,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.error,
   },
   bottomSheetContent: {
     padding: 20,
@@ -165,7 +417,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   secondaryButton: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.backgroundAlt,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -179,263 +431,4 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: colors.text,
   },
-  signOutButton: {
-    backgroundColor: colors.error,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  signOutButtonText: {
-    color: colors.background,
-    fontSize: 16,
-    fontWeight: '600',
-  },
 });
-
-export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showEditSheet, setShowEditSheet] = useState(false);
-  const [editForm, setEditForm] = useState({
-    display_name: '',
-    username: '',
-  });
-
-  const fetchProfile = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-        return;
-      }
-
-      if (data) {
-        setProfile(data);
-        setEditForm({
-          display_name: data.display_name || '',
-          username: data.username || '',
-        });
-      } else {
-        // Create profile if it doesn't exist
-        await createProfile();
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
-
-  const createProfile = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: user.id,
-          display_name: user.email?.split('@')[0] || 'User',
-          username: user.email?.split('@')[0] || 'user',
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating profile:', error);
-        return;
-      }
-
-      setProfile(data);
-      setEditForm({
-        display_name: data.display_name || '',
-        username: data.username || '',
-      });
-    } catch (error) {
-      console.error('Error creating profile:', error);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    if (!user || !profile) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          display_name: editForm.display_name,
-          username: editForm.username,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating profile:', error);
-        Alert.alert('Error', 'Failed to update profile');
-        return;
-      }
-
-      setProfile(data);
-      setShowEditSheet(false);
-      Alert.alert('Success', 'Profile updated successfully');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile');
-    }
-  };
-
-  const handleSignOut = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-            } catch (error) {
-              console.error('Error signing out:', error);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={{ color: colors.text }}>Loading...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => setShowEditSheet(true)}
-          >
-            <Icon name="settings" size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {profile?.display_name?.charAt(0).toUpperCase() || 'U'}
-            </Text>
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.displayName}>
-              {profile?.display_name || 'User'}
-            </Text>
-            <Text style={styles.username}>
-              @{profile?.username || 'username'}
-            </Text>
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => setShowEditSheet(true)}
-            >
-              <Text style={styles.editButtonText}>Edit Profile</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.statsContainer}>
-          <Text style={styles.statsTitle}>Statistics</Text>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>0</Text>
-              <Text style={styles.statLabel}>Files Sent</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>0</Text>
-              <Text style={styles.statLabel}>Files Received</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>0 MB</Text>
-              <Text style={styles.statLabel}>Data Transferred</Text>
-            </View>
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutButtonText}>Sign Out</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      <SimpleBottomSheet
-        isVisible={showEditSheet}
-        onClose={() => setShowEditSheet(false)}
-      >
-        <View style={styles.bottomSheetContent}>
-          <Text style={styles.bottomSheetTitle}>Edit Profile</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Display Name</Text>
-            <TextInput
-              style={styles.input}
-              value={editForm.display_name}
-              onChangeText={(text) => setEditForm({ ...editForm, display_name: text })}
-              placeholder="Enter your display name"
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Username</Text>
-            <TextInput
-              style={styles.input}
-              value={editForm.username}
-              onChangeText={(text) => setEditForm({ ...editForm, username: text })}
-              placeholder="Enter your username"
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
-
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={[styles.button, styles.secondaryButton]}
-              onPress={() => setShowEditSheet(false)}
-            >
-              <Text style={[styles.buttonText, styles.secondaryButtonText]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.primaryButton]}
-              onPress={handleSaveProfile}
-            >
-              <Text style={[styles.buttonText, styles.primaryButtonText]}>
-                Save
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SimpleBottomSheet>
-    </SafeAreaView>
-  );
-}

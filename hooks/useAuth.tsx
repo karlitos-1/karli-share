@@ -1,105 +1,53 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../app/integrations/supabase/client';
-import { Session, User } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthContextType {
-  session: Session | null;
-  user: User | null;
+  deviceId: string | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<any>;
-  signUp: (email: string, password: string, displayName?: string) => Promise<any>;
-  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-
-        // Create profile if user signs up
-        if (event === 'SIGNED_UP' && session?.user) {
-          await createProfile(session.user);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    initializeDevice();
   }, []);
 
-  const createProfile = async (user: User) => {
+  const initializeDevice = async () => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: user.id,
-          username: user.email?.split('@')[0] || 'user',
-          display_name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
-        });
-
-      if (error) {
-        console.error('Error creating profile:', error);
+      // Check if device ID already exists
+      let storedDeviceId = await AsyncStorage.getItem('device_id');
+      
+      if (!storedDeviceId) {
+        // Generate a new device ID
+        storedDeviceId = generateDeviceId();
+        await AsyncStorage.setItem('device_id', storedDeviceId);
+        console.log('Generated new device ID:', storedDeviceId);
+      } else {
+        console.log('Using existing device ID:', storedDeviceId);
       }
+      
+      setDeviceId(storedDeviceId);
     } catch (error) {
-      console.error('Error creating profile:', error);
+      console.error('Error initializing device:', error);
+      // Fallback to a temporary device ID
+      setDeviceId(generateDeviceId());
+    } finally {
+      setLoading(false);
     }
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { data, error };
-  };
-
-  const signUp = async (email: string, password: string, displayName?: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: 'https://natively.dev/email-confirmed',
-        data: {
-          display_name: displayName,
-        },
-      },
-    });
-    return { data, error };
-  };
-
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error);
-    }
+  const generateDeviceId = (): string => {
+    return 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
   };
 
   const value = {
-    session,
-    user,
+    deviceId,
     loading,
-    signIn,
-    signUp,
-    signOut,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

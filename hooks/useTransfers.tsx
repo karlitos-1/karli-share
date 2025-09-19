@@ -7,12 +7,12 @@ import { useAuth } from './useAuth';
 type Transfer = Tables<'transfers'>;
 
 export function useTransfers() {
-  const { user } = useAuth();
+  const { deviceId } = useAuth();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTransfers = useCallback(async () => {
-    if (!user) {
+    if (!deviceId) {
       setTransfers([]);
       setLoading(false);
       return;
@@ -22,7 +22,7 @@ export function useTransfers() {
       const { data, error } = await supabase
         .from('transfers')
         .select('*')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .or(`sender_device_id.eq.${deviceId},receiver_device_id.eq.${deviceId}`)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -36,10 +36,10 @@ export function useTransfers() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [deviceId]);
 
   const subscribeToTransfers = useCallback(() => {
-    if (!user) return;
+    if (!deviceId) return;
 
     const subscription = supabase
       .channel('transfers')
@@ -49,7 +49,6 @@ export function useTransfers() {
           event: '*',
           schema: 'public',
           table: 'transfers',
-          filter: `or(sender_id.eq.${user.id},receiver_id.eq.${user.id})`,
         },
         (payload) => {
           console.log('Transfer update:', payload);
@@ -61,7 +60,7 @@ export function useTransfers() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [user, fetchTransfers]);
+  }, [deviceId, fetchTransfers]);
 
   useEffect(() => {
     fetchTransfers();
@@ -69,15 +68,15 @@ export function useTransfers() {
     return unsubscribe;
   }, [fetchTransfers, subscribeToTransfers]);
 
-  const createTransfer = async (transferData: Omit<Tables<'transfers'>['Insert'], 'sender_id'>) => {
-    if (!user) return null;
+  const createTransfer = async (transferData: Omit<Transfer, 'id' | 'sender_device_id' | 'created_at' | 'updated_at'>) => {
+    if (!deviceId) return null;
 
     try {
       const { data, error } = await supabase
         .from('transfers')
         .insert({
           ...transferData,
-          sender_id: user.id,
+          sender_device_id: deviceId,
         })
         .select()
         .single();

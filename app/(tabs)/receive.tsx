@@ -1,5 +1,4 @@
 
-import { colors, commonStyles } from '../../styles/commonStyles';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -9,197 +8,34 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import { useAuth } from '../../hooks/useAuth';
-import QRCode from 'react-native-qrcode-svg';
-import { generateSessionCode } from '../../utils/fileUtils';
-import { BarCodeScanner } from 'expo-barcode-scanner';
-import { supabase } from '../../app/integrations/supabase/client';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import QRCode from 'react-native-qrcode-svg';
+import { BarCodeScanner } from 'expo-barcode-scanner';
+import { colors, commonStyles } from '../../styles/commonStyles';
+import { useAuth } from '../../hooks/useAuth';
+import { generateSessionCode } from '../../utils/fileUtils';
 import Icon from '../../components/Icon';
 
 const { width } = Dimensions.get('window');
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  modeSelector: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 30,
-    ...commonStyles.shadow,
-  },
-  modeButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  activeModeButton: {
-    backgroundColor: colors.primary,
-  },
-  modeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  activeModeButtonText: {
-    color: colors.background,
-  },
-  qrContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 30,
-    alignItems: 'center',
-    ...commonStyles.shadow,
-  },
-  qrCode: {
-    marginBottom: 20,
-  },
-  sessionCode: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: 8,
-  },
-  sessionLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 20,
-  },
-  refreshButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  refreshButtonText: {
-    color: colors.background,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  scannerContainer: {
-    flex: 1,
-    borderRadius: 20,
-    overflow: 'hidden',
-    ...commonStyles.shadow,
-  },
-  scanner: {
-    flex: 1,
-  },
-  scannerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scannerFrame: {
-    width: 250,
-    height: 250,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: 20,
-    backgroundColor: 'transparent',
-  },
-  scannerText: {
-    color: colors.background,
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 20,
-    textAlign: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  permissionContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  permissionText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  permissionButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  permissionButtonText: {
-    color: colors.background,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
-
 export default function ReceiveScreen() {
-  const { user } = useAuth();
+  const { deviceId } = useAuth();
   const [mode, setMode] = useState<'generate' | 'scan'>('generate');
-  const [sessionCode, setSessionCode] = useState('');
+  const [sessionCode, setSessionCode] = useState<string>('');
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [scanned, setScanned] = useState(false);
 
   const generateSession = useCallback(async () => {
-    if (!user) return;
-
-    const code = generateSessionCode();
-    setSessionCode(code);
-
+    if (!deviceId) return;
+    
     try {
-      const { error } = await supabase
-        .from('transfer_sessions')
-        .insert({
-          session_code: code,
-          creator_id: user.id,
-          is_active: true,
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes
-        });
-
-      if (error) {
-        console.error('Error creating session:', error);
-      }
+      const code = generateSessionCode();
+      setSessionCode(code);
+      console.log('Generated session code:', code);
     } catch (error) {
-      console.error('Error creating session:', error);
+      console.error('Error generating session code:', error);
     }
-  }, [user]);
+  }, [deviceId]);
 
   useEffect(() => {
     if (mode === 'generate') {
@@ -217,39 +53,69 @@ export default function ReceiveScreen() {
   };
 
   const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
-    setScanned(true);
-    Alert.alert(
-      'QR Code Scanned',
-      `Data: ${data}`,
-      [
-        {
-          text: 'Scan Again',
-          onPress: () => setScanned(false),
-        },
-        {
-          text: 'OK',
-          onPress: () => setScanned(false),
-        },
-      ]
-    );
+    setIsCameraActive(false);
+    
+    try {
+      const transferData = JSON.parse(data);
+      console.log('Scanned transfer data:', transferData);
+      
+      Alert.alert(
+        'Fichier détecté',
+        `Voulez-vous recevoir "${transferData.fileName}" (${transferData.fileSize} bytes) ?`,
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { 
+            text: 'Recevoir', 
+            onPress: () => {
+              // Here you would implement the file receiving logic
+              Alert.alert('Succès', 'Réception du fichier en cours...');
+            }
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error parsing QR code:', error);
+      Alert.alert('Erreur', 'Code QR invalide');
+    }
   };
 
   const renderGenerateMode = () => (
-    <View style={styles.qrContainer}>
-      <View style={styles.qrCard}>
-        <View style={styles.qrCode}>
-          <QRCode
-            value={sessionCode}
-            size={width * 0.5}
-            backgroundColor={colors.background}
-            color={colors.text}
-          />
+    <View style={styles.content}>
+      <View style={styles.modeHeader}>
+        <Text style={styles.modeTitle}>Code de session</Text>
+        <Text style={styles.modeDescription}>
+          Partagez ce code avec l&apos;expéditeur pour recevoir des fichiers
+        </Text>
+      </View>
+
+      <View style={styles.sessionContainer}>
+        <View style={styles.qrContainer}>
+          {sessionCode ? (
+            <QRCode
+              value={sessionCode}
+              size={width * 0.5}
+              backgroundColor={colors.background}
+              color={colors.text}
+            />
+          ) : (
+            <View style={styles.qrPlaceholder}>
+              <Icon name="qr-code-outline" size={64} color={colors.textSecondary} />
+              <Text style={styles.placeholderText}>Génération du code...</Text>
+            </View>
+          )}
         </View>
-        <Text style={styles.sessionCode}>{sessionCode}</Text>
-        <Text style={styles.sessionLabel}>Session Code</Text>
-        <TouchableOpacity style={styles.refreshButton} onPress={generateSession}>
-          <Icon name="refresh" size={20} color={colors.background} />
-          <Text style={styles.refreshButtonText}>Generate New</Text>
+
+        <View style={styles.sessionCodeContainer}>
+          <Text style={styles.sessionCodeLabel}>Code de session</Text>
+          <Text style={styles.sessionCodeText}>{sessionCode || '------'}</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={generateSession}
+        >
+          <Icon name="refresh-outline" size={20} color={colors.primary} />
+          <Text style={styles.refreshButtonText}>Nouveau code</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -258,93 +124,272 @@ export default function ReceiveScreen() {
   const renderScanMode = () => {
     if (hasPermission === null) {
       return (
-        <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>Requesting camera permission...</Text>
+        <View style={styles.content}>
+          <Text style={styles.permissionText}>Demande d&apos;autorisation caméra...</Text>
         </View>
       );
     }
 
     if (hasPermission === false) {
       return (
-        <View style={styles.permissionContainer}>
+        <View style={styles.content}>
+          <Icon name="camera-outline" size={64} color={colors.textSecondary} />
           <Text style={styles.permissionText}>
-            Camera permission is required to scan QR codes
+            Accès à la caméra refusé. Veuillez autoriser l&apos;accès dans les paramètres.
           </Text>
           <TouchableOpacity
             style={styles.permissionButton}
             onPress={getBarCodeScannerPermissions}
           >
-            <Text style={styles.permissionButtonText}>Grant Permission</Text>
+            <Text style={styles.permissionButtonText}>Réessayer</Text>
           </TouchableOpacity>
         </View>
       );
     }
 
     return (
-      <View style={styles.scannerContainer}>
-        <BarCodeScanner
-          onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-          style={styles.scanner}
-        />
-        <View style={styles.scannerOverlay}>
-          <View style={styles.scannerFrame} />
-          <Text style={styles.scannerText}>
-            Point your camera at a QR code to scan
+      <View style={styles.content}>
+        <View style={styles.modeHeader}>
+          <Text style={styles.modeTitle}>Scanner un code QR</Text>
+          <Text style={styles.modeDescription}>
+            Pointez la caméra vers le code QR de l&apos;expéditeur
           </Text>
         </View>
+
+        <View style={styles.scannerContainer}>
+          {isCameraActive ? (
+            <BarCodeScanner
+              onBarCodeScanned={handleBarCodeScanned}
+              style={styles.scanner}
+            />
+          ) : (
+            <View style={styles.scannerPlaceholder}>
+              <Icon name="camera-outline" size={64} color={colors.textSecondary} />
+              <Text style={styles.placeholderText}>Caméra inactive</Text>
+            </View>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={styles.scanButton}
+          onPress={() => setIsCameraActive(!isCameraActive)}
+        >
+          <Text style={styles.scanButtonText}>
+            {isCameraActive ? 'Arrêter la caméra' : 'Activer la caméra'}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Receive Files</Text>
-          <Text style={styles.subtitle}>
-            {mode === 'generate'
-              ? 'Share this QR code to receive files'
-              : 'Scan a QR code to connect'}
-          </Text>
-        </View>
-
-        <View style={styles.modeSelector}>
-          <TouchableOpacity
-            style={[
-              styles.modeButton,
-              mode === 'generate' && styles.activeModeButton,
-            ]}
-            onPress={() => setMode('generate')}
-          >
-            <Text
-              style={[
-                styles.modeButtonText,
-                mode === 'generate' && styles.activeModeButtonText,
-              ]}
-            >
-              Generate QR
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.modeButton,
-              mode === 'scan' && styles.activeModeButton,
-            ]}
-            onPress={() => setMode('scan')}
-          >
-            <Text
-              style={[
-                styles.modeButtonText,
-                mode === 'scan' && styles.activeModeButtonText,
-              ]}
-            >
-              Scan QR
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {mode === 'generate' ? renderGenerateMode() : renderScanMode()}
+    <SafeAreaView style={commonStyles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Recevoir</Text>
       </View>
+
+      <View style={styles.modeSelector}>
+        <TouchableOpacity
+          style={[styles.modeButton, mode === 'generate' && styles.modeButtonActive]}
+          onPress={() => setMode('generate')}
+        >
+          <Icon
+            name="qr-code-outline"
+            size={20}
+            color={mode === 'generate' ? colors.background : colors.textSecondary}
+          />
+          <Text
+            style={[
+              styles.modeButtonText,
+              mode === 'generate' && styles.modeButtonTextActive,
+            ]}
+          >
+            Générer
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.modeButton, mode === 'scan' && styles.modeButtonActive]}
+          onPress={() => setMode('scan')}
+        >
+          <Icon
+            name="camera-outline"
+            size={20}
+            color={mode === 'scan' ? colors.background : colors.textSecondary}
+          />
+          <Text
+            style={[
+              styles.modeButtonText,
+              mode === 'scan' && styles.modeButtonTextActive,
+            ]}
+          >
+            Scanner
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {mode === 'generate' ? renderGenerateMode() : renderScanMode()}
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  modeSelector: {
+    flexDirection: 'row',
+    margin: 20,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    padding: 4,
+  },
+  modeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  modeButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  modeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  modeButtonTextActive: {
+    color: colors.background,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  modeHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  modeTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  modeDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  sessionContainer: {
+    alignItems: 'center',
+  },
+  qrContainer: {
+    backgroundColor: colors.backgroundAlt,
+    padding: 24,
+    borderRadius: 16,
+    marginBottom: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: width * 0.5,
+    height: width * 0.5,
+  },
+  placeholderText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  sessionCodeContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  sessionCodeLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  sessionCodeText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: 2,
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundAlt,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  scannerContainer: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 24,
+    height: width * 0.8,
+  },
+  scanner: {
+    flex: 1,
+  },
+  scannerPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  scanButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  permissionText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 32,
+    lineHeight: 24,
+  },
+  permissionButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 24,
+    alignSelf: 'center',
+  },
+  permissionButtonText: {
+    color: colors.background,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

@@ -15,7 +15,6 @@ import { useTransfers } from '../../hooks/useTransfers';
 import { useNotifications } from '../../hooks/useNotifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import OnboardingOverlay from '../../components/OnboardingOverlay';
-import AuthScreen from '../../components/AuthScreen';
 import FilePickerModal from '../../components/FilePickerModal';
 import TransferCard from '../../components/TransferCard';
 import Icon from '../../components/Icon';
@@ -25,7 +24,7 @@ import { router } from 'expo-router';
 const ONBOARDING_KEY = 'karli_share_onboarding_completed';
 
 export default function HomeScreen() {
-  const { user, loading: authLoading } = useAuth();
+  const { deviceId, loading: authLoading } = useAuth();
   const { transfers, loading: transfersLoading } = useTransfers();
   const { unreadCount } = useNotifications();
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -96,10 +95,6 @@ export default function HomeScreen() {
     );
   }
 
-  if (!user) {
-    return <AuthScreen />;
-  }
-
   const recentTransfers = transfers.slice(0, 3);
 
   return (
@@ -143,10 +138,10 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               style={styles.secondaryAction}
-              onPress={() => router.push('/session')}
+              onPress={() => router.push('/(tabs)/receive')}
             >
               <Icon name="wifi-outline" size={24} color={colors.primary} />
-              <Text style={styles.secondaryActionText}>Session</Text>
+              <Text style={styles.secondaryActionText}>Recevoir</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -166,7 +161,7 @@ export default function HomeScreen() {
               <TransferCard
                 key={transfer.id}
                 transfer={transfer}
-                currentUserId={user.id}
+                currentUserId={deviceId}
                 onPress={() => router.push(`/transfer/${transfer.id}`)}
               />
             ))

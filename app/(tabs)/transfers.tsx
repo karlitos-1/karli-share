@@ -9,18 +9,18 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { colors, commonStyles } from '../../styles/commonStyles';
 import { useAuth } from '../../hooks/useAuth';
 import { useTransfers } from '../../hooks/useTransfers';
 import TransferCard from '../../components/TransferCard';
 import Icon from '../../components/Icon';
-import { router } from 'expo-router';
 
 export default function TransfersScreen() {
-  const { user } = useAuth();
+  const { deviceId } = useAuth();
   const { transfers, loading, refetch } = useTransfers();
-  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'sent' | 'received'>('all');
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -28,95 +28,122 @@ export default function TransfersScreen() {
     setRefreshing(false);
   };
 
-  const filteredTransfers = transfers.filter((transfer) => {
-    if (filter === 'sent') return transfer.sender_id === user?.id;
-    if (filter === 'received') return transfer.receiver_id === user?.id;
-    return true;
-  });
+  const getFilteredTransfers = () => {
+    switch (filter) {
+      case 'sent':
+        return transfers.filter(t => t.sender_device_id === deviceId);
+      case 'received':
+        return transfers.filter(t => t.receiver_device_id === deviceId);
+      default:
+        return transfers;
+    }
+  };
 
   const getFilterCount = (filterType: 'all' | 'sent' | 'received') => {
-    if (filterType === 'sent') return transfers.filter(t => t.sender_id === user?.id).length;
-    if (filterType === 'received') return transfers.filter(t => t.receiver_id === user?.id).length;
-    return transfers.length;
+    switch (filterType) {
+      case 'sent':
+        return transfers.filter(t => t.sender_device_id === deviceId).length;
+      case 'received':
+        return transfers.filter(t => t.receiver_device_id === deviceId).length;
+      default:
+        return transfers.length;
+    }
   };
+
+  const filteredTransfers = getFilteredTransfers();
 
   return (
     <SafeAreaView style={commonStyles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Mes transferts</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/(tabs)/')}
-        >
-          <Icon name="add" size={24} color={colors.primary} />
-        </TouchableOpacity>
+        <Text style={styles.title}>Transferts</Text>
       </View>
 
-      <View style={styles.filters}>
-        {[
-          { key: 'all', label: 'Tous' },
-          { key: 'sent', label: 'Envoyés' },
-          { key: 'received', label: 'Reçus' },
-        ].map((filterOption) => (
+      <View style={styles.filterContainer}>
+        {(['all', 'sent', 'received'] as const).map((filterType) => (
           <TouchableOpacity
-            key={filterOption.key}
+            key={filterType}
             style={[
               styles.filterButton,
-              filter === filterOption.key && styles.activeFilterButton,
+              filter === filterType && styles.filterButtonActive,
             ]}
-            onPress={() => setFilter(filterOption.key as any)}
+            onPress={() => setFilter(filterType)}
           >
             <Text
               style={[
-                styles.filterText,
-                filter === filterOption.key && styles.activeFilterText,
+                styles.filterButtonText,
+                filter === filterType && styles.filterButtonTextActive,
               ]}
             >
-              {filterOption.label} ({getFilterCount(filterOption.key as any)})
+              {filterType === 'all' && 'Tous'}
+              {filterType === 'sent' && 'Envoyés'}
+              {filterType === 'received' && 'Reçus'}
             </Text>
+            <View
+              style={[
+                styles.filterBadge,
+                filter === filterType && styles.filterBadgeActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterBadgeText,
+                  filter === filterType && styles.filterBadgeTextActive,
+                ]}
+              >
+                {getFilterCount(filterType)}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
 
       <ScrollView
-        style={styles.scrollView}
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
         }
       >
-        <View style={styles.content}>
-          {loading && !refreshing ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Chargement...</Text>
-            </View>
-          ) : filteredTransfers.length > 0 ? (
-            filteredTransfers.map((transfer) => (
+        {loading && !refreshing ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Chargement...</Text>
+          </View>
+        ) : filteredTransfers.length > 0 ? (
+          <View style={styles.transfersList}>
+            {filteredTransfers.map((transfer) => (
               <TransferCard
                 key={transfer.id}
                 transfer={transfer}
-                currentUserId={user?.id}
+                currentUserId={deviceId}
                 onPress={() => router.push(`/transfer/${transfer.id}`)}
               />
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Icon name="folder-open-outline" size={64} color={colors.textSecondary} />
-              <Text style={styles.emptyTitle}>Aucun transfert</Text>
-              <Text style={styles.emptySubtitle}>
-                {filter === 'sent' && 'Vous n\'avez envoyé aucun fichier'}
-                {filter === 'received' && 'Vous n\'avez reçu aucun fichier'}
-                {filter === 'all' && 'Commencez par envoyer votre premier fichier'}
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={() => router.push('/(tabs)/')}
-              >
-                <Text style={styles.emptyButtonText}>Envoyer un fichier</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Icon name="folder-open-outline" size={64} color={colors.textSecondary} />
+            <Text style={styles.emptyTitle}>
+              {filter === 'all' && 'Aucun transfert'}
+              {filter === 'sent' && 'Aucun fichier envoyé'}
+              {filter === 'received' && 'Aucun fichier reçu'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {filter === 'all' && 'Vos transferts apparaîtront ici'}
+              {filter === 'sent' && 'Les fichiers que vous envoyez apparaîtront ici'}
+              {filter === 'received' && 'Les fichiers que vous recevez apparaîtront ici'}
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyAction}
+              onPress={() => router.push('/(tabs)/')}
+            >
+              <Text style={styles.emptyActionText}>Commencer un transfert</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -124,93 +151,113 @@ export default function TransfersScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.text,
   },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundAlt,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filters: {
+  filterContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingVertical: 16,
     gap: 8,
   },
   filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.backgroundAlt,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: 8,
   },
-  activeFilterButton: {
+  filterButtonActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  filterText: {
+  filterButtonText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: colors.textSecondary,
+    fontWeight: '600',
+    color: colors.text,
   },
-  activeFilterText: {
+  filterButtonTextActive: {
     color: colors.background,
   },
-  scrollView: {
-    flex: 1,
+  filterBadge: {
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  filterBadgeActive: {
+    backgroundColor: colors.background,
+  },
+  filterBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  filterBadgeTextActive: {
+    color: colors.primary,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    flex: 1,
   },
   loadingContainer: {
-    paddingVertical: 40,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 64,
   },
   loadingText: {
     fontSize: 16,
     color: colors.textSecondary,
   },
+  transfersList: {
+    padding: 20,
+    gap: 12,
+  },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
-    paddingVertical: 60,
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 64,
   },
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: colors.text,
-    marginTop: 16,
+    marginTop: 24,
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
+    lineHeight: 24,
+    marginBottom: 32,
   },
-  emptyButton: {
+  emptyAction: {
     backgroundColor: colors.primary,
-    paddingHorizontal: 24,
     paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 12,
   },
-  emptyButtonText: {
+  emptyActionText: {
     color: colors.background,
     fontSize: 16,
     fontWeight: '600',
