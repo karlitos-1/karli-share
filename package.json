@@ -9,6 +9,15 @@
     "web": "EXPO_NO_TELEMETRY=1 expo start --web",
     "build:web": "expo export -p web && npx workbox generateSW workbox-config.js",
     "build:android": "expo prebuild -p android",
+    "build:preview": "npx eas build --platform all --profile preview",
+    "build:android-preview": "npx eas build --platform android --profile preview",
+    "build:ios-preview": "npx eas build --platform ios --profile preview",
+    "build:production": "npx eas build --platform all --profile production",
+    "deploy": "node scripts/deploy.js",
+    "deploy:android": "node scripts/deploy.js android",
+    "deploy:ios": "node scripts/deploy.js ios",
+    "deploy:production": "node scripts/deploy.js production",
+    "pre-deploy-check": "node scripts/pre-deploy-check.js",
     "lint": "eslint ."
   },
   "dependencies": {

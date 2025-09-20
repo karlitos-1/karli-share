@@ -1,31 +1,54 @@
+
 {
   "expo": {
-    "name": "karli-share",
+    "name": "Karli'Share",
     "slug": "karli-share",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/ea7ba2fc-1cf2-4330-a169-2ab9480db233.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/ea7ba2fc-1cf2-4330-a169-2ab9480db233.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.Natively",
+      "bundleIdentifier": "com.pegg.karlishare",
+      "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Cette application a besoin d'accéder à la caméra pour scanner les codes QR et prendre des photos à partager.",
+        "NSPhotoLibraryUsageDescription": "Cette application a besoin d'accéder à vos photos pour les partager avec d'autres utilisateurs.",
+        "NSMicrophoneUsageDescription": "Cette application a besoin d'accéder au microphone pour enregistrer des vidéos à partager.",
+        "NSDocumentsFolderUsageDescription": "Cette application a besoin d'accéder aux documents pour les partager avec d'autres utilisateurs.",
+        "NSLocalNetworkUsageDescription": "Cette application utilise le réseau local pour le transfert direct de fichiers via Wi-Fi Direct."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/ea7ba2fc-1cf2-4330-a169-2ab9480db233.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.pegg.karlishare"
+      "package": "com.pegg.karlishare",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CHANGE_WIFI_STATE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.VIBRATE"
+      ]
     },
     "web": {
       "favicon": "./assets/images/ea7ba2fc-1cf2-4330-a169-2ab9480db233.png",
@@ -34,14 +57,40 @@
     "plugins": [
       "expo-font",
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-barcode-scanner",
+        {
+          "cameraPermission": "Permettre à Karli'Share d'accéder à la caméra pour scanner les codes QR."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "L'application accède à vos photos pour vous permettre de les partager.",
+          "cameraPermission": "L'application accède à votre caméra pour vous permettre de prendre des photos à partager."
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ]
     ],
-    "scheme": "natively",
+    "scheme": "karlishare",
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
-    }
+      "router": {},
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": "1.0.0"
   }
 }
