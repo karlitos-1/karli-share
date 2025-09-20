@@ -1,7 +1,6 @@
-
 {
   "expo": {
-    "name": "Karli'Share",
+    "name": "karli-share",
     "slug": "karli-share",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,9 +20,9 @@
       "bundleIdentifier": "com.pegg.karlishare",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Cette application a besoin d'accéder à la caméra pour scanner les codes QR et prendre des photos à partager.",
-        "NSPhotoLibraryUsageDescription": "Cette application a besoin d'accéder à vos photos pour les partager avec d'autres utilisateurs.",
-        "NSMicrophoneUsageDescription": "Cette application a besoin d'accéder au microphone pour enregistrer des fichiers audio à partager."
+        "NSCameraUsageDescription": "Cette application a besoin d'acc\u00e9der \u00e0 la cam\u00e9ra pour scanner les codes QR et prendre des photos \u00e0 partager.",
+        "NSPhotoLibraryUsageDescription": "Cette application a besoin d'acc\u00e9der \u00e0 vos photos pour les partager avec d'autres utilisateurs.",
+        "NSMicrophoneUsageDescription": "Cette application a besoin d'acc\u00e9der au microphone pour enregistrer des fichiers audio \u00e0 partager."
       }
     },
     "android": {
@@ -58,14 +57,14 @@
       [
         "expo-barcode-scanner",
         {
-          "cameraPermission": "Permettre à Karli'Share d'accéder à la caméra pour scanner les codes QR."
+          "cameraPermission": "Permettre \u00e0 Karli'Share d'acc\u00e9der \u00e0 la cam\u00e9ra pour scanner les codes QR."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "L'application accède à vos photos pour vous permettre de les partager.",
-          "cameraPermission": "L'application accède à votre appareil photo pour vous permettre de prendre des photos à partager."
+          "photosPermission": "L'application acc\u00e8de \u00e0 vos photos pour vous permettre de les partager.",
+          "cameraPermission": "L'application acc\u00e8de \u00e0 votre appareil photo pour vous permettre de prendre des photos \u00e0 partager."
         }
       ],
       [
