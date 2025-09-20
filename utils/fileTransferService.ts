@@ -166,11 +166,12 @@ export class FileTransferService {
       });
 
       // Save file to device
-      if (!FileSystem.documentDirectory) {
+      const documentDirectory = FileSystem.documentDirectory;
+      if (!documentDirectory) {
         throw new Error('Document directory not available');
       }
       
-      const downloadDir = FileSystem.documentDirectory + 'Downloads/';
+      const downloadDir = documentDirectory + 'Downloads/';
       await FileSystem.makeDirectoryAsync(downloadDir, { intermediates: true });
       
       const filePath = downloadDir + fileName;
