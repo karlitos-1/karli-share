@@ -1,17 +1,12 @@
-
 const { getDefaultConfig } = require('expo/metro-config');
+const { FileStore } = require('metro-cache');
+const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
-// Ensure these file extensions are supported
-config.resolver.assetExts.push(
-  // Adds support for `.db` files for SQLite databases
-  'db'
-);
-
-config.resolver.sourceExts.push(
-  // Adds support for `.sql` files
-  'sql'
-);
+// Use turborepo to restore the cache when possible
+config.cacheStores = [
+    new FileStore({ root: path.join(__dirname, 'node_modules', '.cache', 'metro') }),
+  ];
 
 module.exports = config;

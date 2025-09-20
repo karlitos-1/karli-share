@@ -15,7 +15,7 @@ import { useNotifications } from '../hooks/useNotifications';
 import Icon from '../components/Icon';
 
 export default function NotificationsScreen() {
-  const { notifications, loading, unreadCount, markAsRead, markAllAsRead, refetch } = useNotifications();
+  const { notifications, loading, markAsRead, markAllAsRead, refetch } = useNotifications();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const handleRefresh = async () => {
@@ -24,9 +24,9 @@ export default function NotificationsScreen() {
     setRefreshing(false);
   };
 
-  const handleNotificationPress = async (notification: any) => {
+  const handleNotificationPress = (notification: any) => {
     if (!notification.is_read) {
-      await markAsRead(notification.id);
+      markAsRead(notification.id);
     }
     
     // Navigate to transfer if it exists
@@ -41,20 +41,21 @@ export default function NotificationsScreen() {
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
     if (diffInHours < 1) {
-      const minutes = Math.floor(diffInHours * 60);
-      return `Il y a ${minutes} min`;
+      const diffInMinutes = Math.floor(diffInHours * 60);
+      return `Il y a ${diffInMinutes} min`;
     } else if (diffInHours < 24) {
-      const hours = Math.floor(diffInHours);
-      return `Il y a ${hours}h`;
+      return `Il y a ${Math.floor(diffInHours)}h`;
     } else {
       return date.toLocaleDateString('fr-FR', {
         day: 'numeric',
         month: 'short',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
       });
     }
   };
+
+  const unreadNotifications = notifications.filter(n => !n.is_read);
 
   return (
     <SafeAreaView style={commonStyles.container}>
@@ -66,7 +67,7 @@ export default function NotificationsScreen() {
           <Icon name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Notifications</Text>
-        {unreadCount > 0 && (
+        {unreadNotifications.length > 0 && (
           <TouchableOpacity
             style={styles.markAllButton}
             onPress={markAllAsRead}
@@ -97,20 +98,28 @@ export default function NotificationsScreen() {
               <TouchableOpacity
                 key={notification.id}
                 style={[
-                  styles.notificationCard,
-                  !notification.is_read && styles.notificationCardUnread
+                  styles.notificationItem,
+                  !notification.is_read && styles.notificationItemUnread,
                 ]}
                 onPress={() => handleNotificationPress(notification)}
               >
+                <View style={styles.notificationIcon}>
+                  <Icon
+                    name="notifications-outline"
+                    size={20}
+                    color={notification.is_read ? colors.textSecondary : colors.primary}
+                  />
+                </View>
+                
                 <View style={styles.notificationContent}>
-                  <View style={styles.notificationHeader}>
-                    <Text style={styles.notificationTitle}>
-                      {notification.title}
-                    </Text>
-                    {!notification.is_read && (
-                      <View style={styles.unreadDot} />
-                    )}
-                  </View>
+                  <Text
+                    style={[
+                      styles.notificationTitle,
+                      !notification.is_read && styles.notificationTitleUnread,
+                    ]}
+                  >
+                    {notification.title}
+                  </Text>
                   <Text style={styles.notificationMessage}>
                     {notification.message}
                   </Text>
@@ -118,7 +127,10 @@ export default function NotificationsScreen() {
                     {formatDate(notification.created_at)}
                   </Text>
                 </View>
-                <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
+
+                {!notification.is_read && (
+                  <View style={styles.unreadDot} />
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -127,7 +139,7 @@ export default function NotificationsScreen() {
             <Icon name="notifications-outline" size={64} color={colors.textSecondary} />
             <Text style={styles.emptyTitle}>Aucune notification</Text>
             <Text style={styles.emptySubtitle}>
-              Vos notifications apparaîtront ici
+              Vous recevrez des notifications lors des transferts de fichiers
             </Text>
           </View>
         )}
@@ -139,8 +151,8 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
@@ -148,24 +160,22 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
-    borderRadius: 12,
-    backgroundColor: colors.backgroundAlt,
+    marginLeft: -8,
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.text,
+    flex: 1,
+    textAlign: 'center',
   },
   markAllButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: colors.primary,
-    borderRadius: 8,
+    padding: 8,
   },
   markAllText: {
-    color: colors.background,
     fontSize: 14,
     fontWeight: '600',
+    color: colors.primary,
   },
   content: {
     flex: 1,
@@ -183,40 +193,40 @@ const styles = StyleSheet.create({
   notificationsList: {
     padding: 20,
   },
-  notificationCard: {
+  notificationItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: colors.backgroundAlt,
-    borderRadius: 12,
     padding: 16,
+    borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  notificationCardUnread: {
-    backgroundColor: colors.primary + '10',
-    borderColor: colors.primary + '30',
+  notificationItemUnread: {
+    backgroundColor: colors.background,
+    borderColor: colors.primary,
+  },
+  notificationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   notificationContent: {
     flex: 1,
-  },
-  notificationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
   },
   notificationTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    flex: 1,
+    marginBottom: 4,
   },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-    marginLeft: 8,
+  notificationTitleUnread: {
+    color: colors.primary,
   },
   notificationMessage: {
     fontSize: 14,
@@ -227,6 +237,13 @@ const styles = StyleSheet.create({
   notificationDate: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+    marginTop: 6,
   },
   emptyState: {
     flex: 1,

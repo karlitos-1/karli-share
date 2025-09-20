@@ -13,20 +13,6 @@ export function useTransfers() {
   const [loading, setLoading] = useState(true);
   const [transferProgress, setTransferProgress] = useState<Map<string, FileTransferProgress>>(new Map());
 
-  const setDeviceIdForRLS = useCallback(async () => {
-    if (!deviceId) return;
-    
-    try {
-      // Set device ID for RLS policies
-      await supabase.rpc('set_config', {
-        parameter: 'app.device_id',
-        value: deviceId
-      });
-    } catch (error) {
-      console.error('Error setting device ID for RLS:', error);
-    }
-  }, [deviceId]);
-
   const fetchTransfers = useCallback(async () => {
     if (!deviceId) {
       setTransfers([]);
@@ -35,8 +21,6 @@ export function useTransfers() {
     }
 
     try {
-      await setDeviceIdForRLS();
-
       const { data, error } = await supabase
         .from('transfers')
         .select('*')
@@ -54,7 +38,7 @@ export function useTransfers() {
     } finally {
       setLoading(false);
     }
-  }, [deviceId, setDeviceIdForRLS]);
+  }, [deviceId]);
 
   const subscribeToTransfers = useCallback(() => {
     if (!deviceId) return;
@@ -90,8 +74,6 @@ export function useTransfers() {
     if (!deviceId) return null;
 
     try {
-      await setDeviceIdForRLS();
-
       const { data, error } = await supabase
         .from('transfers')
         .insert({
@@ -115,8 +97,6 @@ export function useTransfers() {
 
   const updateTransfer = async (id: string, updates: Partial<Transfer>) => {
     try {
-      await setDeviceIdForRLS();
-
       const { data, error } = await supabase
         .from('transfers')
         .update(updates)

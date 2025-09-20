@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Tabs } from 'expo-router';
 import { colors } from '../../styles/commonStyles';
 import Icon from '../../components/Icon';
@@ -8,9 +7,9 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-        headerShown: false,
         tabBarStyle: {
           backgroundColor: colors.background,
           borderTopColor: colors.border,
@@ -21,8 +20,7 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '600',
-          marginTop: 4,
+          fontWeight: '500',
         },
       }}
     >
@@ -30,25 +28,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Accueil',
-          tabBarIcon: ({ color, focused }) => (
-            <Icon 
-              name={focused ? 'home' : 'home-outline'} 
-              size={24} 
-              color={color} 
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="receive"
-        options={{
-          title: 'Recevoir',
-          tabBarIcon: ({ color, focused }) => (
-            <Icon 
-              name={focused ? 'qr-code' : 'qr-code-outline'} 
-              size={24} 
-              color={color} 
-            />
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="home-outline" size={size} color={color} />
           ),
         }}
       />
@@ -56,12 +37,17 @@ export default function TabLayout() {
         name="transfers"
         options={{
           title: 'Transferts',
-          tabBarIcon: ({ color, focused }) => (
-            <Icon 
-              name={focused ? 'swap-horizontal' : 'swap-horizontal-outline'} 
-              size={24} 
-              color={color} 
-            />
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="swap-horizontal-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="receive"
+        options={{
+          title: 'Recevoir',
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="download-outline" size={size} color={color} />
           ),
         }}
       />
@@ -69,12 +55,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profil',
-          tabBarIcon: ({ color, focused }) => (
-            <Icon 
-              name={focused ? 'person' : 'person-outline'} 
-              size={24} 
-              color={color} 
-            />
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="person-outline" size={size} color={color} />
           ),
         }}
       />

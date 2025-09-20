@@ -12,20 +12,6 @@ export function useNotifications() {
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const setDeviceIdForRLS = useCallback(async () => {
-    if (!deviceId) return;
-    
-    try {
-      // Set device ID for RLS policies
-      await supabase.rpc('set_config', {
-        parameter: 'app.device_id',
-        value: deviceId
-      });
-    } catch (error) {
-      console.error('Error setting device ID for RLS:', error);
-    }
-  }, [deviceId]);
-
   const fetchNotifications = useCallback(async () => {
     if (!deviceId) {
       setNotifications([]);
@@ -35,8 +21,6 @@ export function useNotifications() {
     }
 
     try {
-      await setDeviceIdForRLS();
-
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
@@ -56,7 +40,7 @@ export function useNotifications() {
     } finally {
       setLoading(false);
     }
-  }, [deviceId, setDeviceIdForRLS]);
+  }, [deviceId]);
 
   const subscribeToNotifications = useCallback(() => {
     if (!deviceId) return;
@@ -91,8 +75,6 @@ export function useNotifications() {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      await setDeviceIdForRLS();
-
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
@@ -122,8 +104,6 @@ export function useNotifications() {
     if (!deviceId) return false;
 
     try {
-      await setDeviceIdForRLS();
-
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
@@ -156,8 +136,6 @@ export function useNotifications() {
     if (!deviceId) return null;
 
     try {
-      await setDeviceIdForRLS();
-
       const { data: notification, error } = await supabase
         .from('notifications')
         .insert({

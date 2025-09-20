@@ -75,19 +75,16 @@ export class FileTransferService {
       });
 
       // Get project URL for edge function
+      const { data: { project } } = await supabase.auth.getSession();
       const projectUrl = supabase.supabaseUrl;
       const functionUrl = `${projectUrl}/functions/v1/upload-file`;
-
-      // Get session for auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token || 'anonymous';
 
       // Upload file using edge function
       const uploadResponse = await fetch(functionUrl, {
         method: 'POST',
         body: formData,
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
         },
       });
 
@@ -132,15 +129,11 @@ export class FileTransferService {
       const projectUrl = supabase.supabaseUrl;
       const functionUrl = `${projectUrl}/functions/v1/download-file?transferId=${transferId}&deviceId=${deviceId}`;
 
-      // Get session for auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token || 'anonymous';
-
       // Download file using edge function
       const downloadResponse = await fetch(functionUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
         },
       });
 
@@ -227,12 +220,6 @@ export class FileTransferService {
 
   private async handleSessionTransfer(sessionData: any, deviceId: string): Promise<boolean> {
     try {
-      // Set device ID for RLS
-      await supabase.rpc('set_config', {
-        parameter: 'app.device_id',
-        value: deviceId
-      });
-
       // Find active session
       const { data: session, error } = await supabase
         .from('transfer_sessions')
@@ -267,12 +254,6 @@ export class FileTransferService {
 
   private async handleDirectTransfer(transferData: any, deviceId: string): Promise<boolean> {
     try {
-      // Set device ID for RLS
-      await supabase.rpc('set_config', {
-        parameter: 'app.device_id',
-        value: deviceId
-      });
-
       // Find the transfer
       const { data: transfers, error } = await supabase
         .from('transfers')
